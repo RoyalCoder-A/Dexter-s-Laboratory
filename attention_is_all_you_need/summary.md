@@ -35,3 +35,14 @@ So attention, as the paper is describing, is a mapping a query and a set of key-
 to an output. So what does that mean? It means you have a query vector, a key vector, and a
 value vector. The output is weighted sum of the values, and what are the weights? It will compute by a
 function of the query with its corresponding keys.
+
+### Scaled Dot Product Attention: ![attention](./Screenshot%202024-12-30%20at%206.27.15%E2%80%AFPM.png)
+So this is the formula of scaled dot product attention, dk means dimension of keys and queries
+![scaled dot](./Screenshot%202024-12-30%20at%206.29.05%E2%80%AFPM.png)
+
+### Multi head attention:![](./Screenshot%202024-12-30%20at%206.30.02%E2%80%AFPM.png)
+
+As the paper is saying, instead of using a large single attention, it's better to do `h` small attentions.
+So we want each layer to return 512 dimension, so our `dmodel` is 512. si here because of that concatenate,
+some of the attention outputs should be 512. So if `dk` = `dv` = `dmodel` / h. In this case `h` is 8.
+![](./Screenshot%202024-12-30%20at%206.33.55%E2%80%AFPM.png)
