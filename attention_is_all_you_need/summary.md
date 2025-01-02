@@ -46,3 +46,28 @@ As the paper is saying, instead of using a large single attention, it's better t
 So we want each layer to return 512 dimension, so our `dmodel` is 512. si here because of that concatenate,
 some of the attention outputs should be 512. So if `dk` = `dv` = `dmodel` / h. In this case `h` is 8.
 ![](./Screenshot%202024-12-30%20at%206.33.55%E2%80%AFPM.png)
+
+### Applications of attention:
+So on this paper, attention has applied in three ways (as shown on diagram as well).
+1. The first attention, which is on beginning of the encoder layer, all keys, values, and queries are coming from 
+previous layer (it's self attention)
+2. Decoder first attentions is also a self attention, but it has a mask, what's that mask? So when we are training our 
+model, the input of the decoder is the previous-extracted tokens. Let's have an example, imagine we are translating 
+`How are you?` in persian, the input is `[<START>, How, are, you, ?, <END>]` and the output is 
+`[<START>, حالت, چطوره, ?, <END>]`. So when we are training our model, We pass whole input sequences to the inputs, then,
+on the first step, we will only pass `[<START>]` as the input of decoder, and `حالت` will be the 1st prob on Output prob. 
+Then on second step, we will pass `[<START>, حالت]` 
+as the decoder input and `چطوره` will be the 1st prob on outputs probs, and so on...
+3. The last attention is the attention between the encoder and decoder, which the keys and values are coming from the
+output of the encoder, and queries will come from previous layer on the decoder.
+
+### Feed forward layers:
+So on feed forward layers, paper is using two linear layers which are having a ReLU function between them, also the
+output and the input of the layer are 512, but the hidden layers between them are 2048.
+
+### Embeddings:
+They use a normal learned embedding, but they don't tell which one they're using, also they mention they multiply 
+embeddings by `sqrt(d_model)`
+
+### Softmax:
+They use a normal softmax with a linear layer before it, nothing special on this one.
