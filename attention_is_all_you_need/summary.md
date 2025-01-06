@@ -71,3 +71,10 @@ embeddings by `sqrt(d_model)`
 
 ### Softmax:
 They use a normal softmax with a linear layer before it, nothing special on this one.
+
+### Positional encoding:
+So because the model doesn't have any recurrence or convolutions, it will miss the knowledge behind the
+positions, so in order of model to be able to have a positional understanding of tokens, they add sin/cos positional
+encoding:
+![](./Screenshot%202025-01-07%20at%2000.24.48.png)
+where pos is `position` and i is `dimension`
