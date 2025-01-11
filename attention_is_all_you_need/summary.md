@@ -78,3 +78,22 @@ positions, so in order of model to be able to have a positional understanding of
 encoding:
 ![](./Screenshot%202025-01-07%20at%2000.24.48.png)
 where pos is `position` and i is `dimension`
+
+## Training
+
+### Training data and batching:
+This model has trained on `WMT 2014 English-German dataset`, and encoded using `byte-pair encoding`
+
+### Optimizer:
+* They used `Adam` optimizer with following configuration:  `beta_1 = 09, beta_2 = 098 and eps= 10**-9`.
+* Also, there is a learning rate decay with following formula: ![](./learning-rate-decay.png)
+* which warmup steps set to 4000
+
+### Regularization:
+There are three ways of regularization on this paper:
+1. A dropout added to output of each sub-layer, before adding to sub-layer input and normalizing
+2. A dropout has added to sum of embedding and positional encoding on both encoder and decoder
+3. label smoothing with `eps=0.1`
+
+### Hyper parameters:
+![](./hyper-parameters.png)
