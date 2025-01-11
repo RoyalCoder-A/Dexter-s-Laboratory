@@ -1,0 +1,15 @@
+services:
+  dev:
+    image: attention-is-all-you-need:dev
+    build:
+      context: ./
+      dockerfile: ./dev.Dockerfile
+    volumes:
+      - './:/src'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1 # alternatively, use `count: all` for all GPUs
+              capabilities: [ gpu ]
