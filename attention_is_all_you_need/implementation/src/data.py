@@ -81,5 +81,6 @@ if __name__ == "__main__":
     2. Pad and truncate to max length
     3. Add <s> and </s> to special characters
     4. <unk> is already set for unknowns, so just need to add it to list!
+    5. Also need to add masking to decoder input
     """
     _create_bpe_vocab()
