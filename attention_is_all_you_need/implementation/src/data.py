@@ -11,7 +11,12 @@ DATA_DIR_PATH = Path(__file__).parent / ".." / "data"
 
 def create_dataloader(path: str) -> DataLoader[tuple[str, str]]:
     tokenizer = CharBPETokenizer(
-        str(DATA_DIR_PATH / "vocab.json"), str(DATA_DIR_PATH / "merges.txt")
+        str(DATA_DIR_PATH / "vocab.json"),
+        str(DATA_DIR_PATH / "merges.txt"),
+        padding=True,
+        truncation=True,
+        max_length=256,
+        add_special_tokens=True,
     )
     dataset = Wmt14Dataset(path, lambda x: tokenizer.encode(x).ids)
     dataloader = DataLoader(dataset, 32, True, pin_memory=True)
@@ -63,24 +68,17 @@ def _create_bpe_vocab():
                     for col in row:
                         writer.write(col + "\n")
 
-    vocab_size = 37000
     tokenizer = CharBPETokenizer()
     tokenizer.train(
         files=[str(bpe_dataset_path)],
-        vocab_size=vocab_size,  # Number of tokens in the vocabulary
-        min_frequency=2,  # Minimum frequency for a token to be included
+        vocab_size=37000,
+        min_frequency=2,
+        special_tokens=["<unk>", "<s>", "</s>", "<pad>"],
     )
+    tokenizer.enable_padding(pad_token="<pad>", length=256)
+    tokenizer.enable_truncation(max_length=256)
     tokenizer.save_model(str(DATA_DIR_PATH))
 
 
 if __name__ == "__main__":
-    # TODO
-    """
-    We need data preprocessing, including:
-    1. Adding <s> and </s>
-    2. Pad and truncate to max length
-    3. Add <s> and </s> to special characters
-    4. <unk> is already set for unknowns, so just need to add it to list!
-    5. Also need to add masking to decoder input
-    """
     _create_bpe_vocab()
