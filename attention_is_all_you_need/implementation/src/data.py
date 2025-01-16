@@ -2,6 +2,7 @@ import csv
 from pathlib import Path
 
 from tokenizers.implementations import CharBPETokenizer
+import torch
 import tqdm
 from torch.utils.data import Dataset, DataLoader
 
@@ -10,7 +11,9 @@ DATA_DIR_PATH = Path(__file__).parent / ".." / "data"
 
 def create_dataloader(path: str) -> DataLoader[tuple[str, str]]:
     dataset = Wmt14Dataset(path, 256)
-    dataloader = DataLoader(dataset, 32, True, pin_memory=True)
+    dataloader = DataLoader(
+        dataset=dataset, batch_size=32, shuffle=True, pin_memory=True
+    )
     return dataloader
 
 
@@ -22,11 +25,9 @@ class Wmt14Dataset(Dataset):
         self.tokenizer = CharBPETokenizer(
             str(DATA_DIR_PATH / "vocab.json"),
             str(DATA_DIR_PATH / "merges.txt"),
-            padding=True,
-            truncation=True,
-            max_length=self.max_length,
-            add_special_tokens=True,
         )
+        self.tokenizer.enable_padding(pad_token="<pad>", length=256)
+        self.tokenizer.enable_truncation(max_length=256)
 
     def __len__(self) -> int:
         return len(self.data)
@@ -42,13 +43,13 @@ class Wmt14Dataset(Dataset):
 
         # Encode target text
         target_tokens = self.tokenizer.encode(target)
-        decoder_input = target_tokens.ids[:-1]
-        decoder_output = target_tokens.ids[1:]
-        decoder_attention_mask = target_tokens.attention_mask[
-            :-1
-        ]  # Match decoder_input length
+        decoder_input = target_tokens.ids
 
-        return (encoder_input, decoder_input, decoder_attention_mask, decoder_output)
+        # TODO: Add masking
+        return (
+            torch.Tensor(encoder_input).type(torch.int32),
+            torch.Tensor(decoder_input).type(torch.int32),
+        )
 
     def _init_data(self) -> list[tuple[str, str]]:
         data = []
