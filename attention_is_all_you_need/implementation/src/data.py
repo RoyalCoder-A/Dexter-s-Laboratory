@@ -1,6 +1,5 @@
 import csv
 from pathlib import Path
-from typing import Callable
 
 from tokenizers.implementations import CharBPETokenizer
 import tqdm
@@ -10,25 +9,24 @@ DATA_DIR_PATH = Path(__file__).parent / ".." / "data"
 
 
 def create_dataloader(path: str) -> DataLoader[tuple[str, str]]:
-    tokenizer = CharBPETokenizer(
-        str(DATA_DIR_PATH / "vocab.json"),
-        str(DATA_DIR_PATH / "merges.txt"),
-        padding=True,
-        truncation=True,
-        max_length=256,
-        add_special_tokens=True,
-    )
-    dataset = Wmt14Dataset(path, lambda x: tokenizer.encode(x).ids)
+    dataset = Wmt14Dataset(path, 256)
     dataloader = DataLoader(dataset, 32, True, pin_memory=True)
     return dataloader
 
 
 class Wmt14Dataset(Dataset):
-    # TODO: Add decoder input
-    def __init__(self, path: str, target_transform: Callable[[str], list[int]]):
+    def __init__(self, path: str, max_length: int):
         self.path = path
-        self.target_transform = target_transform
+        self.max_length = max_length
         self.data = self._init_data()
+        self.tokenizer = CharBPETokenizer(
+            str(DATA_DIR_PATH / "vocab.json"),
+            str(DATA_DIR_PATH / "merges.txt"),
+            padding=True,
+            truncation=True,
+            max_length=self.max_length,
+            add_special_tokens=True,
+        )
 
     def __len__(self) -> int:
         return len(self.data)
@@ -37,10 +35,20 @@ class Wmt14Dataset(Dataset):
         item = self.data[idx]
         source = item[0]
         target = item[1]
-        if self.target_transform:
-            target = self.target_transform(target)
-            source = self.target_transform(source)
-        return source, target
+
+        # Encode source text
+        encoder_tokens = self.tokenizer.encode(source)
+        encoder_input = encoder_tokens.ids
+
+        # Encode target text
+        target_tokens = self.tokenizer.encode(target)
+        decoder_input = target_tokens.ids[:-1]
+        decoder_output = target_tokens.ids[1:]
+        decoder_attention_mask = target_tokens.attention_mask[
+            :-1
+        ]  # Match decoder_input length
+
+        return (encoder_input, decoder_input, decoder_attention_mask, decoder_output)
 
     def _init_data(self) -> list[tuple[str, str]]:
         data = []
@@ -74,7 +82,7 @@ def _create_bpe_vocab():
         files=[str(bpe_dataset_path)],
         vocab_size=37000,
         min_frequency=2,
-        special_tokens=["<unk>", "<s>", "</s>", "<pad>"],
+        special_tokens=["<unk>", "<w>", "</w>", "<pad>"],
     )
     tokenizer.enable_padding(pad_token="<pad>", length=256)
     tokenizer.enable_truncation(max_length=256)
