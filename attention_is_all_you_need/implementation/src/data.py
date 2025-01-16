@@ -24,6 +24,7 @@ def create_dataloader(path: str) -> DataLoader[tuple[str, str]]:
 
 
 class Wmt14Dataset(Dataset):
+    # TODO: Add decoder input
     def __init__(self, path: str, target_transform: Callable[[str], list[int]]):
         self.path = path
         self.target_transform = target_transform
