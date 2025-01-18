@@ -45,7 +45,6 @@ class Wmt14Dataset(Dataset):
         target_tokens = self.tokenizer.encode(target)
         decoder_input = target_tokens.ids
 
-        # TODO: Add masking
         return (
             torch.Tensor(encoder_input).type(torch.int32),
             torch.Tensor(decoder_input).type(torch.int32),
