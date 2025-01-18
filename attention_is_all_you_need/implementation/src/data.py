@@ -46,8 +46,8 @@ class Wmt14Dataset(Dataset):
         decoder_input = target_tokens.ids
 
         return (
-            torch.Tensor(encoder_input).type(torch.int32),
-            torch.Tensor(decoder_input).type(torch.int32),
+            torch.tensor(encoder_input).type(torch.int32),
+            torch.tensor(decoder_input).type(torch.int32),
         )
 
     def _init_data(self) -> list[tuple[str, str]]:
