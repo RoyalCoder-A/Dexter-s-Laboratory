@@ -39,7 +39,7 @@ class MultiheadAttention(torch.nn.Module):
         return self.out(context.view(x.size(0), x.size(1), self.d_model))
 
 
-class DecoderAttention(torch.nn.Module):
+class CrossAttention(torch.nn.Module):
     def __init__(self, d_model: int, heads: int, device: str):
         super().__init__()
         assert (
@@ -52,7 +52,12 @@ class DecoderAttention(torch.nn.Module):
         self.out = torch.nn.Linear(d_model, d_model)
         self.to(device)
 
-    def forward(self, q: torch.Tensor, encoder_output: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        q: torch.Tensor,
+        encoder_output: torch.Tensor,
+        mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
         kv = self.kv(encoder_output).view(
             encoder_output.size(0), encoder_output.size(1), self.heads, self.d_k, 2
         )
@@ -61,6 +66,8 @@ class DecoderAttention(torch.nn.Module):
         scores = torch.matmul(q, k.transpose(-2, -1)) / torch.sqrt(
             torch.tensor(self.d_k, dtype=torch.float32)
         )
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, float("-inf"))
         attn = torch.nn.functional.softmax(scores, dim=-1)
         context = torch.matmul(attn, v)
         return self.out(context.view(q.size(0), q.size(1), self.d_model))

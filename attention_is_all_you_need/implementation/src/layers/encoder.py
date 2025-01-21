@@ -17,9 +17,9 @@ class EncoderSublayer(torch.nn.Module):
         self.feed_forward_dropout = torch.nn.Dropout(0.1)
         self.to(device)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         x = self.multi_head_normalizer(
-            self.multi_head_dropout(self.multi_head_attention(x)) + x
+            self.multi_head_dropout(self.multi_head_attention(x, mask)) + x
         )
         x = self.feed_forward_normalizer(
             self.feed_forward_dropout(self.feed_forward(x)) + x
@@ -31,10 +31,12 @@ class Encoder(torch.nn.Module):
 
     def __init__(self, n: int, d_model: int, dff: int, heads: int, device: str):
         super().__init__()
-        self.sub_layers = torch.nn.Sequential(
-            *[EncoderSublayer(d_model, dff, heads, device) for _ in range(n)]
+        self.sub_layers = torch.nn.ModuleList(
+            [EncoderSublayer(d_model, dff, heads, device) for _ in range(n)]
         )
         self.to(device)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.sub_layers(x)
+    def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        for layer in self.sub_layers:
+            x = layer(x, mask)
+        return x

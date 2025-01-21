@@ -9,25 +9,31 @@ from torch.utils.data import Dataset, DataLoader
 DATA_DIR_PATH = Path(__file__).parent / ".." / "data"
 
 
-def create_dataloader(path: str) -> DataLoader[tuple[str, str]]:
-    dataset = Wmt14Dataset(path, 256)
+def create_dataloader(
+    path: str, max_length: int, batch_size: int, limit: int | None = None
+) -> DataLoader[tuple[str, str]]:
+    dataset = Wmt14Dataset(path, max_length, limit=limit)
     dataloader = DataLoader(
-        dataset=dataset, batch_size=32, shuffle=True, pin_memory=True
+        dataset=dataset, batch_size=batch_size, shuffle=True, pin_memory=True
     )
     return dataloader
 
 
+VOCAB_SIZE = 37000
+MAX_LENGTH = 256
+
+
 class Wmt14Dataset(Dataset):
-    def __init__(self, path: str, max_length: int):
+    def __init__(self, path: str, max_length: int, limit: int | None = None):
         self.path = path
         self.max_length = max_length
-        self.data = self._init_data()
+        self.data = self._init_data(limit)
         self.tokenizer = CharBPETokenizer(
             str(DATA_DIR_PATH / "vocab.json"),
             str(DATA_DIR_PATH / "merges.txt"),
         )
-        self.tokenizer.enable_padding(pad_token="<pad>", length=256)
-        self.tokenizer.enable_truncation(max_length=256)
+        self.tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
+        self.tokenizer.enable_truncation(max_length=MAX_LENGTH)
 
     def __len__(self) -> int:
         return len(self.data)
@@ -50,8 +56,9 @@ class Wmt14Dataset(Dataset):
             torch.tensor(decoder_input).type(torch.int32),
         )
 
-    def _init_data(self) -> list[tuple[str, str]]:
+    def _init_data(self, limit: int | None) -> list[tuple[str, str]]:
         data = []
+        counter = 0
         with open(self.path, "r") as f:
             reader = csv.reader(f, delimiter=",")
             next(reader)
@@ -59,6 +66,9 @@ class Wmt14Dataset(Dataset):
                 if len(row) != 2:
                     continue
                 data.append((row[0], row[1]))
+                counter += 1
+                if limit and counter >= limit:
+                    break
         return data
 
 
@@ -80,12 +90,12 @@ def _create_bpe_vocab():
     tokenizer = CharBPETokenizer()
     tokenizer.train(
         files=[str(bpe_dataset_path)],
-        vocab_size=37000,
+        vocab_size=VOCAB_SIZE,
         min_frequency=2,
         special_tokens=["<unk>", "<w>", "</w>", "<pad>"],
     )
-    tokenizer.enable_padding(pad_token="<pad>", length=256)
-    tokenizer.enable_truncation(max_length=256)
+    tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
+    tokenizer.enable_truncation(max_length=MAX_LENGTH)
     tokenizer.save_model(str(DATA_DIR_PATH))
 
 
