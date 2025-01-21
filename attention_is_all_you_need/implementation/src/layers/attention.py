@@ -2,12 +2,46 @@ import torch
 
 
 """
-1. Input data will be simple tensor: (32, 256, 512)
-2. Will create qkv by passing to linear layer: (32, 256, 512, 3)
-3. Split into heads: (32, 256, 8, 64, 3)
-4. Apply attention: (32, 256, 8, 64, 1)
-5. Concatenate heads: (32, 256, 512, 1)
-6. Apply linear layer: (32, 256, 512)
+Typical multi-head attention shapes:
+
+Let:
+    B = batch_size
+    S = sequence_length
+    H = number_of_heads
+    d_model = model dimension
+    d_k = d_model / H
+
+1. Input to attention (x): [B, S, d_model]
+2. Q, K, V after linear layers: [B, S, d_model]
+3. Split heads (reshape): [B, S, H, d_k]
+4. Transpose for attention: [B, H, S, d_k]
+5. Compute scores = Q x K^T / sqrt(d_k): [B, H, S, S]
+6. Apply mask and softmax over last dimension: [B, H, S, S]
+7. Multiply by V: [B, H, S, d_k]
+8. Transpose/reshape to merge heads: [B, S, d_model]
+"""
+
+
+"""
+Padding Mask in Multi-Head Attention
+
+Purpose:
+    - Ensures that attention is not paid to padding tokens.
+    - Typically, a binary mask of shape [B, S] (1 = valid token, 0 = padding).
+
+Usage:
+    1. Original mask shape: [B, S]
+       - B = batch_size
+       - S = sequence_length
+    2. Broadcast it to match attention score shapes:
+       - For self-attention: [B, 1, 1, S] -> eventually [B, heads, S, S] via broadcast.
+       - For cross-attention: similar expansion, e.g. [B, 1, S_src, S_tgt].
+    3. Apply to attention logits (scores) of shape [B, heads, S, S] by:
+       scores = scores.masked_fill(mask == 0, float('-inf'))
+    4. Softmax over the last dimension so that all positions marked as padding get 0 weight.
+
+Result:
+    - The model ignores padded positions when calculating attention.
 """
 
 
