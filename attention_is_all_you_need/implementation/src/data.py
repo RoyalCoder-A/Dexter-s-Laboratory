@@ -20,7 +20,7 @@ def create_dataloader(
 
 
 VOCAB_SIZE = 37000
-MAX_LENGTH = 256
+MAX_LENGTH = 50
 
 
 class Wmt14Dataset(Dataset):

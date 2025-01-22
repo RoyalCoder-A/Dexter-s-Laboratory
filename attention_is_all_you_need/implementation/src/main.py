@@ -14,7 +14,6 @@ from attention_is_all_you_need.implementation.src.transformer_model import (
 )
 
 if __name__ == "__main__":
-    print(torch.mps.is_available())
     if torch.mps.is_available():
         device = "mps"
     elif torch.cuda.is_available():

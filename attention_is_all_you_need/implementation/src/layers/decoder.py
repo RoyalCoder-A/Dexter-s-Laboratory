@@ -26,16 +26,19 @@ class DecoderSubLayer(torch.nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        padding_mask: torch.Tensor,
+        encoder_padding_mask: torch.Tensor,
+        decoder_padding_mask: torch.Tensor,
         lookahead_mask: torch.Tensor,
         encoder_output: torch.Tensor,
     ) -> torch.Tensor:
         x = self.masked_attention_normalizer(
-            self.masked_attention_dropout(self.masked_attention(x, lookahead_mask) + x)
+            self.masked_attention_dropout(
+                self.masked_attention(x, lookahead_mask & decoder_padding_mask) + x
+            )
         )
         x = self.cross_attention_normalizer(
             self.cross_attention_dropout(
-                self.cross_attention(x, encoder_output, padding_mask) + x
+                self.cross_attention(x, encoder_output, encoder_padding_mask) + x
             )
         )
         x = self.feed_forward_normalizer(
@@ -57,11 +60,18 @@ class Decoder(torch.nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        padding_mask: torch.Tensor,
+        encoder_padding_mask: torch.Tensor,
+        decoder_padding_mask: torch.Tensor,
         look_ahead_mask: torch.Tensor,
         encoder_output: torch.Tensor,
     ) -> torch.Tensor:
         for layer in self.layers:
-            x = layer(x, padding_mask, look_ahead_mask, encoder_output)
+            x = layer(
+                x,
+                encoder_padding_mask,
+                decoder_padding_mask,
+                look_ahead_mask,
+                encoder_output,
+            )
         x = self.final_normalizer(x)
         return x

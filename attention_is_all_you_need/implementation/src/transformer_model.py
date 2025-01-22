@@ -23,11 +23,12 @@ class TransformerModel(torch.nn.Module):
         self.encoder = Encoder(n, d_model, dff, heads, device)
         self.decoder = Decoder(n, d_model, dff, heads, device)
         self.out = torch.nn.Linear(d_model, dict_size)
+        self.device = device
         self.to(device)
 
     def create_padding_mask(self, seq: torch.Tensor) -> torch.Tensor:
         """Create padding mask for the input sequence."""
-        return seq != self.pad_idx
+        return (seq != self.pad_idx).unsqueeze(1).unsqueeze(2)
 
     def create_look_ahead_mask(self, size: int) -> torch.Tensor:
         """Create look-ahead mask for the decoder."""
@@ -37,10 +38,13 @@ class TransformerModel(torch.nn.Module):
     def forward(
         self, encoder_input: torch.Tensor, decoder_input: torch.Tensor
     ) -> torch.Tensor:
-        src_mask = self.create_padding_mask(encoder_input)
-        tgt_mask = self.create_look_ahead_mask(decoder_input.size(1))
+        src_mask = self.create_padding_mask(encoder_input).to(self.device)
+        tgt_mask = self.create_look_ahead_mask(decoder_input.size(1)).to(self.device)
+        tgt_padding_mask = self.create_padding_mask(decoder_input).to(self.device)
         encoder_input = self.pre_layer(encoder_input)
         decoder_input = self.pre_layer(decoder_input)
         encoder_output = self.encoder(encoder_input, src_mask)
-        decoder_output = self.decoder(decoder_input, src_mask, tgt_mask, encoder_output)
+        decoder_output = self.decoder(
+            decoder_input, src_mask, tgt_padding_mask, tgt_mask, encoder_output
+        )
         return self.out(decoder_output)
