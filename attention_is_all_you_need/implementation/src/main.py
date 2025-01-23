@@ -29,8 +29,13 @@ if __name__ == "__main__":
     )
     transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
     for data in dataloader:
-        encoder_input, decoder_input = data
-        print(encoder_input.shape, decoder_input.shape)
+        encoder_input, decoder_input, decoder_output = data
+        print(
+            "Data shapes: ",
+            encoder_input.shape,
+            decoder_input.shape,
+            decoder_output.shape,
+        )
         torchinfo.summary(
             transformer,
             device=device,

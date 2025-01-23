@@ -1,4 +1,5 @@
 import csv
+from json import decoder
 from pathlib import Path
 
 from tokenizers.implementations import CharBPETokenizer
@@ -42,18 +43,23 @@ class Wmt14Dataset(Dataset):
         item = self.data[idx]
         source = item[0]
         target = item[1]
+        decoder_input_str = target[:-1]
+        decoder_output_str = target[1:]
 
         # Encode source text
         encoder_tokens = self.tokenizer.encode(source)
         encoder_input = encoder_tokens.ids
 
         # Encode target text
-        target_tokens = self.tokenizer.encode(target)
-        decoder_input = target_tokens.ids
+        decoder_input_tokens = self.tokenizer.encode(decoder_input_str)
+        decoder_input = decoder_input_tokens.ids
+        decoder_output_tokens = self.tokenizer.encode(decoder_output_str)
+        decoder_output = decoder_output_tokens.ids
 
         return (
             torch.tensor(encoder_input).type(torch.int32),
             torch.tensor(decoder_input).type(torch.int32),
+            torch.tensor(decoder_output).type(torch.int32),
         )
 
     def _init_data(self, limit: int | None) -> list[tuple[str, str]]:
@@ -65,7 +71,7 @@ class Wmt14Dataset(Dataset):
             for row in tqdm.tqdm(reader):
                 if len(row) != 2:
                     continue
-                data.append((row[0], row[1]))
+                data.append((f"<sos> {row[0]} </sos>", f"<sos> {row[1]} </sos>"))
                 counter += 1
                 if limit and counter >= limit:
                     break
