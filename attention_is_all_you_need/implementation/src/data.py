@@ -11,13 +11,17 @@ DATA_DIR_PATH = Path(__file__).parent / ".." / "data"
 
 
 def create_dataloader(
-    path: str, max_length: int, batch_size: int, limit: int | None = None
-) -> DataLoader[tuple[str, str]]:
-    dataset = Wmt14Dataset(path, max_length, limit=limit)
+    path: str,
+    max_length: int,
+    batch_size: int,
+    limit: int | None = None,
+    tokenizer: CharBPETokenizer | None = None,
+) -> tuple[DataLoader[tuple[str, str]], CharBPETokenizer]:
+    dataset = Wmt14Dataset(path, max_length, limit=limit, tokenizer=tokenizer)
     dataloader = DataLoader(
         dataset=dataset, batch_size=batch_size, shuffle=True, pin_memory=True
     )
-    return dataloader
+    return dataloader, dataset.tokenizer
 
 
 VOCAB_SIZE = 37000
@@ -25,16 +29,25 @@ MAX_LENGTH = 50
 
 
 class Wmt14Dataset(Dataset):
-    def __init__(self, path: str, max_length: int, limit: int | None = None):
+    def __init__(
+        self,
+        path: str,
+        max_length: int,
+        limit: int | None,
+        tokenizer: CharBPETokenizer | None,
+    ):
         self.path = path
         self.max_length = max_length
         self.data = self._init_data(limit)
-        self.tokenizer = CharBPETokenizer(
-            str(DATA_DIR_PATH / "vocab.json"),
-            str(DATA_DIR_PATH / "merges.txt"),
-        )
-        self.tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
-        self.tokenizer.enable_truncation(max_length=MAX_LENGTH)
+        if not tokenizer:
+            self.tokenizer = CharBPETokenizer(
+                str(DATA_DIR_PATH / "vocab.json"),
+                str(DATA_DIR_PATH / "merges.txt"),
+            )
+            self.tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
+            self.tokenizer.enable_truncation(max_length=MAX_LENGTH)
+        else:
+            self.tokenizer = tokenizer
 
     def __len__(self) -> int:
         return len(self.data)
@@ -60,6 +73,7 @@ class Wmt14Dataset(Dataset):
             torch.tensor(encoder_input).type(torch.int32),
             torch.tensor(decoder_input).type(torch.int32),
             torch.tensor(decoder_output).type(torch.int32),
+            target,
         )
 
     def _init_data(self, limit: int | None) -> list[tuple[str, str]]:
