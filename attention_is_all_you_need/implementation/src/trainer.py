@@ -115,9 +115,12 @@ class Trainer:
             torch.tensor(bleu_scores).mean().item(),
         )
 
-    def _calculate_bleu(self, tgt: torch.Tensor, pred: torch.Tensor) -> float:
-        pred_tokens = self.tokenizer.decode(pred)
-        return self.bleu_fn(pred_tokens, tgt.unsqueeze(1))
+    def _calculate_bleu(self, tgt: tuple, pred: torch.Tensor) -> float:
+        pred_tokens = [
+            self.tokenizer.decode(pred[i].detach().cpu().numpy())
+            for i in range(pred.size(0))
+        ]
+        return self.bleu_fn(pred_tokens, [[x] for x in tgt])
 
     def _update_learning_rate(self):
         lr = self.get_lr()
