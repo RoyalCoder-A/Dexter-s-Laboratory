@@ -107,7 +107,7 @@ class Trainer:
                     pred_logits.view(
                         -1, pred_logits.size(-1)
                     ),  # reshape to [batch_size * seq_len, vocab_size]
-                    y.view(-1),  # reshape to [batch_size * seq_len]
+                    y.view(-1).long(),  # reshape to [batch_size * seq_len]
                 )
                 losses.append(loss.detach().cpu().item())
         return (
