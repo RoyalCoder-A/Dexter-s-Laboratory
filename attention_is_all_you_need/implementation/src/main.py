@@ -17,6 +17,9 @@ from attention_is_all_you_need.implementation.src.transformer_model import (
 )
 
 if __name__ == "__main__":
+
+    BATCH_SIZE = 32
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", default="cpu", help="Device to use (cpu/cuda/mps)")
     args = parser.parse_args()
@@ -25,7 +28,7 @@ if __name__ == "__main__":
     train_dataloader, tokenizer = create_dataloader(
         str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
         MAX_LENGTH,
-        512,
+        BATCH_SIZE,
     )
     test_dataloader, _ = create_dataloader(
         str(
@@ -35,10 +38,13 @@ if __name__ == "__main__":
             / "wmt14_translate_de-en_validation.csv"
         ),
         MAX_LENGTH,
-        512,
+        BATCH_SIZE,
         tokenizer=tokenizer,
     )
-    transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
+    transformer = TransformerModel(
+        VOCAB_SIZE, MAX_LENGTH, 6, 512, BATCH_SIZE, 8, device
+    )
+    transformer = torch.compile(transformer)
     loss_fn = torch.nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = torch.optim.Adam(
         params=transformer.parameters(), betas=(0.9, 0.98), eps=1e-9, lr=1
