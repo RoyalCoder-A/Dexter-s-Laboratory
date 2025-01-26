@@ -41,9 +41,7 @@ if __name__ == "__main__":
         BATCH_SIZE,
         tokenizer=tokenizer,
     )
-    transformer = TransformerModel(
-        VOCAB_SIZE, MAX_LENGTH, 6, 512, BATCH_SIZE, 8, device
-    )
+    transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
     transformer = torch.compile(transformer)
     loss_fn = torch.nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = torch.optim.Adam(
@@ -55,7 +53,7 @@ if __name__ == "__main__":
     trainer = Trainer(
         model=transformer,
         optimizer=optimizer,
-        batch_size=32,
+        batch_size=BATCH_SIZE,
         d_model=512,
         train_data_loader=train_dataloader,
         test_data_loader=test_dataloader,
