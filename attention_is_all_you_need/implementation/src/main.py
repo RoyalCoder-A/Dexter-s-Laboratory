@@ -25,7 +25,7 @@ if __name__ == "__main__":
     train_dataloader, tokenizer = create_dataloader(
         str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
         MAX_LENGTH,
-        32,
+        512,
     )
     test_dataloader, _ = create_dataloader(
         str(
@@ -35,11 +35,11 @@ if __name__ == "__main__":
             / "wmt14_translate_de-en_validation.csv"
         ),
         MAX_LENGTH,
-        32,
+        512,
         tokenizer=tokenizer,
     )
     transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
-    loss_fn = torch.nn.CrossEntropyLoss(label_smoothing=0.1)
+    loss_fn = torch.nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = torch.optim.Adam(
         params=transformer.parameters(), betas=(0.9, 0.98), eps=1e-9, lr=1
     )

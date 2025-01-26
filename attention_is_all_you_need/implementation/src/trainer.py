@@ -38,7 +38,7 @@ class Trainer:
         self.warmup_steps = warmup_steps
         self.current_step = 0
         self.tokenizer = tokenizer
-        self.bleu_fn = BLEUScore()
+        self.bleu_fn = BLEUScore().to(device)
 
     def train(self):
         for i in range(self.num_epochs):
