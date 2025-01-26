@@ -29,7 +29,7 @@ if __name__ == "__main__":
         str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
         MAX_LENGTH,
         BATCH_SIZE,
-        limit=1000,
+        limit=10000,
     )
     test_dataloader, _ = create_dataloader(
         str(
@@ -61,8 +61,10 @@ if __name__ == "__main__":
         loss_fn=loss_fn,
         device=device,
         tokenizer=tokenizer,
-        warmup_steps=4000,
-        num_epochs=3125,
+        # warmup_steps=4000,
+        warmup_steps=400,
+        # num_epochs=3125,
+        num_epochs=500,
         summary_writer=summary_writer,
     )
     if device == "cuda":
