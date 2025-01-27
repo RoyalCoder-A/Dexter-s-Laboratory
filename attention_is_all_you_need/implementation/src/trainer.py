@@ -1,6 +1,6 @@
 import math
 import torch
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 import tqdm
 from torchmetrics.text import BLEUScore
 from tokenizers.implementations import CharBPETokenizer

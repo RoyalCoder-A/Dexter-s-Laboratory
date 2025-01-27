@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 import torch
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard.writer import SummaryWriter
 from torch.utils.data import DataLoader
 from tokenizers.implementations import CharBPETokenizer
 import tqdm
