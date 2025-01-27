@@ -14,8 +14,8 @@ class Trainer:
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         loss_fn: torch.nn.Module,
-        train_data_loader: torch.utils.data.DataLoader[Wmt14Dataset],
-        test_data_loader: torch.utils.data.DataLoader[Wmt14Dataset],
+        train_data_loader: torch.utils.data.DataLoader,
+        test_data_loader: torch.utils.data.DataLoader,
         summary_writer: SummaryWriter,
         d_model: int,
         warmup_steps: int,
@@ -119,7 +119,7 @@ class Trainer:
 
     def _calculate_bleu(self, tgt: tuple, pred: torch.Tensor) -> float:
         pred_tokens = [
-            self.tokenizer.decode(pred[i].detach().cpu().numpy())
+            self.tokenizer.decode(list(pred[i].detach().cpu().numpy()))
             for i in range(pred.size(0))
         ]
         return self.bleu_fn(pred_tokens, [[x] for x in tgt])
