@@ -65,7 +65,7 @@ def train(
 def test(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
     model_full_path = Path(os.getcwd()) / model_path
     test_dataloader, _ = create_dataloader(
-        str(BASE_DIR / "data" / "wmt14_translate_de-en_validation.csv"),
+        str(BASE_DIR / "data" / "wmt14_translate_de-en_test.csv"),
         MAX_LENGTH,
         BATCH_SIZE,
         tokenizer=tokenizer,
