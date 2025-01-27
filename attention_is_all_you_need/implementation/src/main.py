@@ -7,6 +7,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from torch.utils.data import DataLoader
 from tokenizers.implementations import CharBPETokenizer
 import tqdm
+from torchmetrics.text import BLEUScore
 
 from attention_is_all_you_need.implementation.src import trainer
 from attention_is_all_you_need.implementation.src.data import (
@@ -64,13 +65,16 @@ def train(
 def test(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
     model_full_path = Path(os.getcwd()) / model_path
     test_dataloader, _ = create_dataloader(
-        str(BASE_DIR / "data" / "wmt14_translate_de-en_test.csv"),
+        str(BASE_DIR / "data" / "wmt14_translate_de-en_validation.csv"),
         MAX_LENGTH,
         BATCH_SIZE,
         tokenizer=tokenizer,
     )
     transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
     transformer.load_state_dict(torch.load(model_full_path, weights_only=False))
+    bleu_scores = []
+    bleu_fn = BLEUScore().to(device)
+    transformer.eval()
     with torch.inference_mode():
         for encoder_x, decoder_x, y, tgt in tqdm.tqdm(test_dataloader, desc="Testing"):
             encoder_x, decoder_x, y = (
@@ -85,10 +89,12 @@ def test(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
                 tokenizer.decode(list(preds[i].detach().cpu().numpy()))
                 for i in range(preds.size(0))
             ]
+            bleu_scores.append(bleu_fn(pred_tokens, [[x] for x in tgt]))
             for target, prediction in zip(tgt, pred_tokens):
                 print(f"Target: {target}")
                 print(f"Prediction: {prediction}")
                 print("=" * 50)
+    print(f"BLEU Score: {sum(bleu_scores) / len(bleu_scores)}")
 
 
 if __name__ == "__main__":
