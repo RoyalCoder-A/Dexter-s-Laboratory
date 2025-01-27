@@ -47,6 +47,7 @@ class Trainer:
             test_loss, bleu_score = self._test_step()
             print(f"Train loss: {train_loss:.4f}")
             print(f"Test loss: {test_loss:.4f}")
+            print(f"Test bleu score: {bleu_score:.4f}")
             if test_loss < self.best_loss:
                 print("Saving")
                 self.best_loss = test_loss
@@ -59,9 +60,8 @@ class Trainer:
     def _train_step(self):
         losses = []
         self.model.train()
-        for encoder_x, decoder_x, y, _ in tqdm.tqdm(
-            self.train_data_loader, desc="Training"
-        ):
+        pbar = tqdm.tqdm(self.train_data_loader, desc="Training")
+        for encoder_x, decoder_x, y, _ in pbar:
             lr = self._update_learning_rate()
             self.summary_writer.add_scalar("learning_rate", lr, self.current_step)
             encoder_x, decoder_x, y = (
@@ -76,13 +76,15 @@ class Trainer:
                 ),  # reshape to [batch_size * seq_len, vocab_size]
                 y.view(-1),  # reshape to [batch_size * seq_len]
             )
+            loss_number = loss.detach().cpu().item()
+            pbar.set_description(f"Training loss: {loss_number:.4f}")
             self.optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
                 self.model.parameters(), self.gradient_clip_val
             )
             self.optimizer.step()
-            losses.append(loss.detach().cpu().item())
+            losses.append(loss_number)
         return torch.tensor(losses).mean().item()
 
     def _test_step(self):
