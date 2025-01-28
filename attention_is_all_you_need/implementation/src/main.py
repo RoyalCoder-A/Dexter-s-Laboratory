@@ -22,7 +22,7 @@ from attention_is_all_you_need.implementation.src.transformer_model import (
 
 
 BASE_DIR = Path(__file__).parent.parent
-BATCH_SIZE = 512
+BATCH_SIZE = 32
 
 
 def train(
@@ -62,7 +62,7 @@ def train(
     trainer.train()
 
 
-def test(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
+def eval(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
     model_full_path = Path(os.getcwd()) / model_path
     test_dataloader, _ = create_dataloader(
         str(BASE_DIR / "data" / "wmt14_translate_de-en_test.csv"),
@@ -97,11 +97,15 @@ def test(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
     print(f"BLEU Score: {sum(bleu_scores) / len(bleu_scores)}")
 
 
-if __name__ == "__main__":
-
+def run() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", default="cpu", help="Device to use (cpu/cuda/mps)")
-    parser.add_argument("--test-model-path", default="", help="Path to test model")
+    parser.add_argument(
+        "--mode",
+        default="train",
+        help="Mode of application (train/eval/test)",
+        choices=["train", "eval", "test"],
+    )
     args = parser.parse_args()
     device = args.device
     print(device)
@@ -111,7 +115,13 @@ if __name__ == "__main__":
         BATCH_SIZE,
         limit=10000,
     )
-    if not args.test_model_path:
+    if args.mode == "train":
         train(device, train_dataloader, tokenizer)
+    elif args.mode == "eval":
+        eval(device, tokenizer, str(BASE_DIR / "best_model.pth"))
     else:
-        test(device, tokenizer, args.test_model_path)
+        raise Exception("Not implemented yet")
+
+
+if __name__ == "__main__":
+    run()
