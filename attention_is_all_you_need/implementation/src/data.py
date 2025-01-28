@@ -56,8 +56,8 @@ class Wmt14Dataset(Dataset):
         item = self.data[idx]
         source = item[0]
         target = item[1]
-        decoder_input_str = target[:-1]
-        decoder_output_str = target[1:]
+        decoder_input_str = " ".join(target.split()[:-1])
+        decoder_output_str = " ".join(target.split()[1:])
 
         # Encode source text
         encoder_tokens = self.tokenizer.encode(source)
