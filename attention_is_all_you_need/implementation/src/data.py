@@ -48,7 +48,7 @@ class Wmt14Dataset(Dataset):
         self.max_length = max_length
         self.data = self._init_data(limit)
         self.tokenizer = get_tokenizer()
-        self.mask_token_id = self.tokenizer.token_to_id("[MASK]")
+        self.pad_token_id = self.tokenizer.token_to_id("[PAD]")
 
     def __len__(self) -> int:
         return len(self.data)
@@ -61,8 +61,8 @@ class Wmt14Dataset(Dataset):
         source_tokenizer = self.tokenizer.encode(source)
         target_tokenizer = self.tokenizer.encode(target)
         encoder_input = source_tokenizer.ids
-        decoder_input = target_tokenizer.ids[:-1] + [self.mask_token_id]
-        decoder_output = [self.mask_token_id] + target_tokenizer.ids[1:]
+        decoder_input = target_tokenizer.ids
+        decoder_output = target_tokenizer.ids[1:] + [self.pad_token_id]
 
         return (
             torch.tensor(encoder_input).type(torch.long),
