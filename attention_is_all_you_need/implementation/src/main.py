@@ -161,7 +161,7 @@ def train(device: str) -> None:
         device=device,
         tokenizer=get_tokenizer(),
         warmup_steps=4000,
-        num_epochs=12,
+        num_epochs=10,
         summary_writer=summary_writer,
         checkpoint_path=str(BASE_DIR / "best_model.pth"),
     )
