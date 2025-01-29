@@ -1,8 +1,6 @@
 .idea/
 .venv/
-bpe_dataset.txt
-merges.txt
-vocab.json
+bpe*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

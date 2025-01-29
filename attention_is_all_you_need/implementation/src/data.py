@@ -2,7 +2,11 @@ import csv
 from json import decoder
 from pathlib import Path
 
-from tokenizers.implementations import CharBPETokenizer
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
+from tokenizers.trainers import BpeTrainer
+from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.processors import TemplateProcessing
 import torch
 import tqdm
 from torch.utils.data import Dataset, DataLoader
@@ -15,26 +19,21 @@ def create_dataloader(
     max_length: int,
     batch_size: int,
     limit: int | None = None,
-    tokenizer: CharBPETokenizer | None = None,
-) -> tuple[DataLoader[tuple[str, str]], CharBPETokenizer]:
-    dataset = Wmt14Dataset(path, max_length, limit=limit, tokenizer=tokenizer)
+) -> DataLoader[tuple[str, str]]:
+    dataset = Wmt14Dataset(path, max_length, limit=limit)
     dataloader = DataLoader(
         dataset=dataset, batch_size=batch_size, shuffle=True, pin_memory=True
     )
-    return dataloader, dataset.tokenizer
+    return dataloader
 
 
 VOCAB_SIZE = 37000
 MAX_LENGTH = 50
 
 
-def get_tokenizer() -> CharBPETokenizer:
-    tokenizer = CharBPETokenizer(
-        str(DATA_DIR_PATH / "vocab.json"),
-        str(DATA_DIR_PATH / "merges.txt"),
-    )
-    tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
-    tokenizer.enable_truncation(max_length=MAX_LENGTH)
+def get_tokenizer() -> Tokenizer:
+    bpe_path = DATA_DIR_PATH / "bpe_tokenizer.json"
+    tokenizer = Tokenizer.from_file(str(bpe_path))
     return tokenizer
 
 
@@ -44,15 +43,12 @@ class Wmt14Dataset(Dataset):
         path: str,
         max_length: int,
         limit: int | None,
-        tokenizer: CharBPETokenizer | None,
     ):
         self.path = path
         self.max_length = max_length
         self.data = self._init_data(limit)
-        if not tokenizer:
-            self.tokenizer = get_tokenizer()
-        else:
-            self.tokenizer = tokenizer
+        self.tokenizer = get_tokenizer()
+        self.mask_token_id = self.tokenizer.token_to_id("[MASK]")
 
     def __len__(self) -> int:
         return len(self.data)
@@ -61,28 +57,22 @@ class Wmt14Dataset(Dataset):
         item = self.data[idx]
         source = item[0]
         target = item[1]
-        decoder_input_str = " ".join(target.split()[:-1])
-        decoder_output_str = " ".join(target.split()[1:])
 
-        # Encode source text
-        encoder_tokens = self.tokenizer.encode(source)
-        encoder_input = encoder_tokens.ids
-
-        # Encode target text
-        decoder_input_tokens = self.tokenizer.encode(decoder_input_str)
-        decoder_input = decoder_input_tokens.ids
-        decoder_output_tokens = self.tokenizer.encode(decoder_output_str)
-        decoder_output = decoder_output_tokens.ids
+        source_tokenizer = self.tokenizer.encode(source)
+        target_tokenizer = self.tokenizer.encode(target)
+        encoder_input = source_tokenizer.ids
+        decoder_input = target_tokenizer.ids[:-1] + [self.mask_token_id]
+        decoder_output = [self.mask_token_id] + target_tokenizer.ids[1:]
 
         return (
-            torch.tensor(encoder_input).type(torch.int32),
-            torch.tensor(decoder_input).type(torch.int32),
-            torch.tensor(decoder_output).type(torch.int32),
-            target,
+            torch.tensor(encoder_input).type(torch.long),
+            torch.tensor(decoder_input).type(torch.long),
+            torch.tensor(decoder_output).type(torch.long),
+            " ".join(target_tokenizer.tokens),
         )
 
     def _init_data(self, limit: int | None) -> list[tuple[str, str]]:
-        data = []
+        data: list[tuple[str, str]] = []
         counter = 0
         with open(self.path, "r") as f:
             reader = csv.reader(f, delimiter=",")
@@ -90,7 +80,7 @@ class Wmt14Dataset(Dataset):
             for row in tqdm.tqdm(reader):
                 if len(row) != 2:
                     continue
-                data.append((f"<sos> {row[0]} </sos>", f"<sos> {row[1]} </sos>"))
+                data.append((row[0], row[1]))
                 counter += 1
                 if limit and counter >= limit:
                     break
@@ -98,7 +88,7 @@ class Wmt14Dataset(Dataset):
 
 
 def create_bpe_vocab():
-    bpe_path = DATA_DIR_PATH / "vocab.json"
+    bpe_path = DATA_DIR_PATH / "bpe_tokenizer.json"
     bpe_dataset_path = DATA_DIR_PATH / "bpe_dataset.txt"
     if bpe_path.is_file():
         print("Vocab file exists, skipping...")
@@ -111,17 +101,30 @@ def create_bpe_vocab():
                 for row in tqdm.tqdm(reader):
                     for col in row:
                         writer.write(col + "\n")
+    tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
+    tokenizer.pre_tokenizer = Whitespace()  # type: ignore
 
-    tokenizer = CharBPETokenizer()
-    tokenizer.train(
-        files=[str(bpe_dataset_path)],
-        vocab_size=VOCAB_SIZE,
-        min_frequency=2,
-        special_tokens=["<unk>", "<sos>", "</sos>", "<pad>"],
+    # Train the tokenizer
+    trainer = BpeTrainer(
+        vocab_size=VOCAB_SIZE,  # type: ignore
+        special_tokens=["[PAD]", "[UNK]", "[CLS]", "[SEP]", "[MASK]"],  # type: ignore
     )
-    tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
+
+    files = [str(bpe_dataset_path)]
+    tokenizer.train(files, trainer)
+    tokenizer.enable_padding(
+        pad_id=tokenizer.token_to_id("[PAD]"), pad_token="[PAD]", length=MAX_LENGTH
+    )
     tokenizer.enable_truncation(max_length=MAX_LENGTH)
-    tokenizer.save_model(str(DATA_DIR_PATH))
+    tokenizer.post_processor = TemplateProcessing(
+        single="[CLS] $A [SEP]",  # Single sentence format
+        pair="[CLS] $A [SEP] $B:1 [SEP]:1",  # Paired sentence format
+        special_tokens=[
+            ("[CLS]", tokenizer.token_to_id("[CLS]")),
+            ("[SEP]", tokenizer.token_to_id("[SEP]")),
+        ],
+    )  # type: ignore
+    tokenizer.save(str(bpe_path))
 
 
 if __name__ == "__main__":

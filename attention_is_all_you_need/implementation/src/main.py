@@ -5,7 +5,6 @@ from pathlib import Path
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
 from torch.utils.data import DataLoader
-from tokenizers.implementations import CharBPETokenizer
 import tqdm
 from torchmetrics.text import BLEUScore
 
@@ -27,14 +26,11 @@ BASE_DIR = Path(__file__).parent.parent
 BATCH_SIZE = 512
 
 
-def train(
-    device: str, train_dataloader: DataLoader, tokenizer: CharBPETokenizer
-) -> None:
-    test_dataloader, _ = create_dataloader(
+def train(device: str, train_dataloader: DataLoader) -> None:
+    test_dataloader = create_dataloader(
         str(BASE_DIR / "data" / "wmt14_translate_de-en_validation.csv"),
         MAX_LENGTH,
         BATCH_SIZE,
-        tokenizer=tokenizer,
     )
     transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
     loss_fn = torch.nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
@@ -53,7 +49,7 @@ def train(
         test_data_loader=test_dataloader,
         loss_fn=loss_fn,
         device=device,
-        tokenizer=tokenizer,
+        tokenizer=get_tokenizer(),
         warmup_steps=4000,
         num_epochs=12,
         summary_writer=summary_writer,
@@ -65,12 +61,11 @@ def train(
     trainer.train()
 
 
-def eval(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
+def eval(device: str, model_path: str) -> None:
     test_dataloader, _ = create_dataloader(
         str(BASE_DIR / "data" / "wmt14_translate_de-en_test.csv"),
         MAX_LENGTH,
         BATCH_SIZE,
-        tokenizer=tokenizer,
     )
     transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
     transformer.load_state_dict(
@@ -78,6 +73,7 @@ def eval(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
     )
     bleu_scores = []
     bleu_fn = BLEUScore().to(device)
+    tokenizer = get_tokenizer()
     transformer.eval()
     with torch.inference_mode():
         for encoder_x, decoder_x, y, tgt in tqdm.tqdm(test_dataloader, desc="Testing"):
@@ -115,7 +111,7 @@ def test(model_path: str, device: str) -> None:
                 if sentence.lower() == "q":
                     break
 
-                encoder_input = "<sos> " + sentence + " </sos>"
+                encoder_input = sentence
                 encoder_input_tokens = (
                     torch.tensor(
                         tokenizer.encode(encoder_input).ids, dtype=torch.long
@@ -124,7 +120,7 @@ def test(model_path: str, device: str) -> None:
                     .unsqueeze(0)
                 )
 
-                decoder_input = "<sos>"
+                decoder_input = "[CLS]"
                 output = ""
                 max_length = 100  # Prevent infinite loops
 
@@ -174,15 +170,15 @@ def run() -> None:
     args = parser.parse_args()
     device = args.device
     print(device)
-    train_dataloader, tokenizer = create_dataloader(
+    train_dataloader = create_dataloader(
         str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
         MAX_LENGTH,
         BATCH_SIZE,
     )
     if args.mode == "train":
-        train(device, train_dataloader, tokenizer)
+        train(device, train_dataloader)
     elif args.mode == "eval":
-        eval(device, tokenizer, str(BASE_DIR / "best_model.pth"))
+        eval(device, str(BASE_DIR / "best_model.pth"))
     else:
         test(str(BASE_DIR / "best_model.pth"), device)
 

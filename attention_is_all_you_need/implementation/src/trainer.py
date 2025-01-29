@@ -1,9 +1,9 @@
 import math
+from tokenizers import Tokenizer
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
 import tqdm
 from torchmetrics.text import BLEUScore
-from tokenizers.implementations import CharBPETokenizer
 
 
 class Trainer:
@@ -19,7 +19,7 @@ class Trainer:
         warmup_steps: int,
         batch_size: int,
         num_epochs: int,
-        tokenizer: CharBPETokenizer,
+        tokenizer: Tokenizer,
         checkpoint_path: str,
         device: str,
     ):
