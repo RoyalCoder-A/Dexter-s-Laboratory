@@ -28,6 +28,16 @@ VOCAB_SIZE = 37000
 MAX_LENGTH = 50
 
 
+def get_tokenizer() -> CharBPETokenizer:
+    tokenizer = CharBPETokenizer(
+        str(DATA_DIR_PATH / "vocab.json"),
+        str(DATA_DIR_PATH / "merges.txt"),
+    )
+    tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
+    tokenizer.enable_truncation(max_length=MAX_LENGTH)
+    return tokenizer
+
+
 class Wmt14Dataset(Dataset):
     def __init__(
         self,
@@ -40,12 +50,7 @@ class Wmt14Dataset(Dataset):
         self.max_length = max_length
         self.data = self._init_data(limit)
         if not tokenizer:
-            self.tokenizer = CharBPETokenizer(
-                str(DATA_DIR_PATH / "vocab.json"),
-                str(DATA_DIR_PATH / "merges.txt"),
-            )
-            self.tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
-            self.tokenizer.enable_truncation(max_length=MAX_LENGTH)
+            self.tokenizer = get_tokenizer()
         else:
             self.tokenizer = tokenizer
 
@@ -112,7 +117,7 @@ def _create_bpe_vocab():
         files=[str(bpe_dataset_path)],
         vocab_size=VOCAB_SIZE,
         min_frequency=2,
-        special_tokens=["<unk>", "<w>", "</w>", "<pad>"],
+        special_tokens=["<unk>", "<sos>", "</sos>", "<pad>"],
     )
     tokenizer.enable_padding(pad_token="<pad>", length=MAX_LENGTH)
     tokenizer.enable_truncation(max_length=MAX_LENGTH)

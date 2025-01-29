@@ -14,6 +14,7 @@ from attention_is_all_you_need.implementation.src.data import (
     MAX_LENGTH,
     VOCAB_SIZE,
     create_dataloader,
+    get_tokenizer,
 )
 from attention_is_all_you_need.implementation.src.trainer import Trainer
 from attention_is_all_you_need.implementation.src.transformer_model import (
@@ -22,7 +23,7 @@ from attention_is_all_you_need.implementation.src.transformer_model import (
 
 
 BASE_DIR = Path(__file__).parent.parent
-BATCH_SIZE = 32
+BATCH_SIZE = 512
 
 
 def train(
@@ -63,7 +64,6 @@ def train(
 
 
 def eval(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
-    model_full_path = Path(os.getcwd()) / model_path
     test_dataloader, _ = create_dataloader(
         str(BASE_DIR / "data" / "wmt14_translate_de-en_test.csv"),
         MAX_LENGTH,
@@ -71,7 +71,9 @@ def eval(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
         tokenizer=tokenizer,
     )
     transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
-    transformer.load_state_dict(torch.load(model_full_path, weights_only=False))
+    transformer.load_state_dict(
+        torch.load(model_path, weights_only=False, map_location=device)
+    )
     bleu_scores = []
     bleu_fn = BLEUScore().to(device)
     transformer.eval()
@@ -97,6 +99,67 @@ def eval(device: str, tokenizer: CharBPETokenizer, model_path: str) -> None:
     print(f"BLEU Score: {sum(bleu_scores) / len(bleu_scores)}")
 
 
+def test(model_path: str, device: str) -> None:
+    tokenizer = get_tokenizer()
+    transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
+    transformer.load_state_dict(torch.load(model_path, map_location=device))
+    transformer.to(device)  # Ensure model is on correct device
+    transformer.eval()
+
+    with torch.inference_mode():
+        while True:
+            try:
+                sentence = input("Enter sentence to test (or 'q' to quit): ")
+                if sentence.lower() == "q":
+                    break
+
+                encoder_input = "<sos> " + sentence + " </sos>"
+                encoder_input_tokens = (
+                    torch.tensor(
+                        tokenizer.encode(encoder_input).ids, dtype=torch.long
+                    )  # Ensure long dtype
+                    .to(device)
+                    .unsqueeze(0)
+                )
+
+                decoder_input = "<sos>"
+                output = ""
+                max_length = 100  # Prevent infinite loops
+
+                for i in range(max_length):
+                    decoder_input_tokens = (
+                        torch.tensor(
+                            tokenizer.encode(decoder_input).ids, dtype=torch.long
+                        )
+                        .to(device)
+                        .unsqueeze(0)
+                    )
+
+                    pred_logits = transformer(
+                        encoder_input_tokens, decoder_input_tokens
+                    ).squeeze(0)
+                    pred_probs = torch.nn.functional.softmax(
+                        pred_logits, dim=-1
+                    )  # Only look at last token
+                    pred_tokens = torch.argmax(pred_probs, dim=-1)
+                    pred_token = pred_tokens[i].cpu()
+
+                    next_word = tokenizer.decode([pred_token.item()])
+                    decoder_input += " " + next_word
+                    output += " " + next_word
+
+                    if "</sos>" in next_word:
+                        break
+
+                print(f"Input: {sentence}")
+                print(f"Prediction: {output.strip()}")
+                print("=" * 50)
+
+            except Exception as e:
+                print(f"Error occurred: {str(e)}")
+                continue
+
+
 def run() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", default="cpu", help="Device to use (cpu/cuda/mps)")
@@ -120,7 +183,7 @@ def run() -> None:
     elif args.mode == "eval":
         eval(device, tokenizer, str(BASE_DIR / "best_model.pth"))
     else:
-        raise Exception("Not implemented yet")
+        test(str(BASE_DIR / "best_model.pth"), device)
 
 
 if __name__ == "__main__":
