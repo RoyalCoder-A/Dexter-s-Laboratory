@@ -13,6 +13,7 @@ from attention_is_all_you_need.implementation.src import trainer
 from attention_is_all_you_need.implementation.src.data import (
     MAX_LENGTH,
     VOCAB_SIZE,
+    create_bpe_vocab,
     create_dataloader,
     get_tokenizer,
 )
@@ -187,4 +188,5 @@ def run() -> None:
 
 
 if __name__ == "__main__":
+    create_bpe_vocab()
     run()

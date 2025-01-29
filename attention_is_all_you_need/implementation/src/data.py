@@ -97,7 +97,7 @@ class Wmt14Dataset(Dataset):
         return data
 
 
-def _create_bpe_vocab():
+def create_bpe_vocab():
     bpe_path = DATA_DIR_PATH / "vocab.json"
     bpe_dataset_path = DATA_DIR_PATH / "bpe_dataset.txt"
     if bpe_path.is_file():
@@ -125,4 +125,4 @@ def _create_bpe_vocab():
 
 
 if __name__ == "__main__":
-    _create_bpe_vocab()
+    create_bpe_vocab()
