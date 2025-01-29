@@ -26,7 +26,117 @@ BASE_DIR = Path(__file__).parent.parent
 BATCH_SIZE = 512
 
 
-def train(device: str, train_dataloader: DataLoader) -> None:
+def test(model_path: str, device: str) -> None:
+    tokenizer = get_tokenizer()
+    transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
+    transformer.load_state_dict(torch.load(model_path, map_location=device))
+    transformer.to(device)
+    transformer.eval()
+
+    with torch.inference_mode():
+        while True:
+            try:
+                sentence = input("Enter sentence to test (or 'q' to quit): ")
+                if sentence.lower() == "q":
+                    break
+
+                # Encode and pad input sentence
+                encoder_tokens = tokenizer.encode(sentence).ids
+                print("\nEncoder input:", tokenizer.decode(encoder_tokens))
+
+                encoder_input_tokens = (
+                    torch.tensor(
+                        _pad_sequence(encoder_tokens, MAX_LENGTH, pad_token_id=0),
+                        dtype=torch.long,
+                    )
+                    .to(device)
+                    .unsqueeze(0)
+                )
+
+                # Start with CLS token and explicitly decode it to verify
+                decoder_tokens = torch.tensor(
+                    [[2] + [0] * (MAX_LENGTH - 1)], dtype=torch.long
+                ).to(device)
+                generated = []
+                current_length = 1  # Start after CLS token
+
+                print(
+                    f"Initial decoder input:",
+                    tokenizer.decode(decoder_tokens[0].tolist()),
+                )
+
+                for i in range(MAX_LENGTH - 1):
+                    print(f"\nStep {i+1}")
+                    print(
+                        "Current decoder:",
+                        tokenizer.decode(decoder_tokens[0, :current_length].tolist()),
+                    )
+
+                    pred_logits = transformer(encoder_input_tokens, decoder_tokens)
+                    next_token_logits = pred_logits[0, current_length - 1, :]
+
+                    # Apply softmax with temperature
+                    temperature = 0.7
+                    next_token_logits = next_token_logits / temperature
+                    probs = torch.softmax(next_token_logits, dim=-1)
+
+                    # Zero out probabilities for special tokens except SEP
+                    probs[0] = 0  # PAD
+                    probs[1] = 0  # UNK
+                    probs[2] = 0  # CLS
+                    probs[4] = 0  # MASK
+
+                    # Renormalize probabilities
+                    probs = probs / probs.sum()
+
+                    # Get top 5 predictions
+                    top_probs, top_indices = torch.topk(probs, 5)
+                    print("\nTop 5 predictions:")
+                    for prob, idx in zip(
+                        top_probs.cpu().numpy(), top_indices.cpu().numpy()
+                    ):
+                        token = tokenizer.decode([idx])
+                        print(f"Token: {token} (ID: {idx}), Probability: {prob:.4f}")
+
+                    # Sample from the distribution
+                    pred_token_id = torch.multinomial(probs, num_samples=1).item()
+                    generated.append(pred_token_id)
+
+                    if pred_token_id == 3:  # SEP token
+                        print("Generated SEP token, stopping.")
+                        break
+
+                    # Update decoder input tensor directly
+                    decoder_tokens[0, current_length] = pred_token_id
+                    current_length += 1
+
+                output = tokenizer.decode(generated)
+
+                print(f"\nInput: {sentence}")
+                print(f"Prediction: {output}")
+                print(f"Generated token IDs: {generated}")
+                print("=" * 50)
+
+            except Exception as e:
+                print(f"Error occurred: {str(e)}")
+                print(f"Error type: {type(e)}")
+                import traceback
+
+                traceback.print_exc()
+                continue
+
+
+def _pad_sequence(seq: list[int], max_length: int, pad_token_id: int) -> list[int]:
+    """Pad a sequence to max_length with pad_token_id."""
+    return seq + [pad_token_id] * (max_length - len(seq))
+
+
+def train(device: str) -> None:
+    train_dataloader = create_dataloader(
+        str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
+        MAX_LENGTH,
+        BATCH_SIZE,
+    )
     test_dataloader = create_dataloader(
         str(BASE_DIR / "data" / "wmt14_translate_de-en_validation.csv"),
         MAX_LENGTH,
@@ -95,13 +205,10 @@ def eval(device: str, model_path: str) -> None:
                 print(f"Prediction: {prediction}")
                 print("=" * 50)
     print(f"BLEU Score: {sum(bleu_scores) / len(bleu_scores)}")
-
-
-def test(model_path: str, device: str) -> None:
     tokenizer = get_tokenizer()
     transformer = TransformerModel(VOCAB_SIZE, MAX_LENGTH, 6, 512, 2048, 8, device)
     transformer.load_state_dict(torch.load(model_path, map_location=device))
-    transformer.to(device)  # Ensure model is on correct device
+    transformer.to(device)
     transformer.eval()
 
     with torch.inference_mode():
@@ -111,46 +218,57 @@ def test(model_path: str, device: str) -> None:
                 if sentence.lower() == "q":
                     break
 
-                encoder_input = sentence
+                # Encode input sentence
                 encoder_input_tokens = (
-                    torch.tensor(
-                        tokenizer.encode(encoder_input).ids, dtype=torch.long
-                    )  # Ensure long dtype
+                    torch.tensor(tokenizer.encode(sentence).ids, dtype=torch.long)
                     .to(device)
                     .unsqueeze(0)
                 )
 
-                decoder_input = "[CLS]"
-                output = ""
-                max_length = 100  # Prevent infinite loops
+                # Start with just the CLS token
+                decoder_tokens = [tokenizer.token_to_id("[CLS]")] + [
+                    tokenizer.token_to_id("[PAD]")
+                ] * 49
+                decoder_input_tokens = torch.tensor(
+                    [decoder_tokens], dtype=torch.long
+                ).to(device)
 
-                for i in range(max_length):
-                    decoder_input_tokens = (
-                        torch.tensor(
-                            tokenizer.encode(decoder_input).ids, dtype=torch.long
-                        )
-                        .to(device)
-                        .unsqueeze(0)
+                generated_tokens = []
+                max_length = 100
+
+                for _ in range(max_length):
+                    padded_decoder_tokens = _pad_sequence(
+                        decoder_tokens, MAX_LENGTH, tokenizer.token_to_id("[PAD]")
                     )
+                    decoder_input_tokens = torch.tensor(
+                        [padded_decoder_tokens], dtype=torch.long
+                    ).to(device)
 
+                    # Get model predictions
                     pred_logits = transformer(
                         encoder_input_tokens, decoder_input_tokens
-                    ).squeeze(0)
-                    pred_probs = torch.nn.functional.softmax(
-                        pred_logits, dim=-1
-                    )  # Only look at last token
-                    pred_tokens = torch.argmax(pred_probs, dim=-1)
-                    pred_token = pred_tokens[i].cpu()
+                    )
 
-                    next_word = tokenizer.decode([pred_token.item()])
-                    decoder_input += " " + next_word
-                    output += " " + next_word
+                    # Get predictions for the last valid position
+                    last_token_logits = pred_logits[:, len(decoder_tokens) - 1, :]
+                    pred_token = torch.argmax(last_token_logits, dim=-1)
 
-                    if "</sos>" in next_word:
+                    # Convert to scalar
+                    pred_token_id = pred_token.item()
+                    generated_tokens.append(pred_token_id)
+
+                    # Stop if we predict SEP token
+                    if pred_token_id == tokenizer.token_to_id("[SEP]"):
                         break
 
+                    # Add the predicted token to decoder input
+                    decoder_tokens.append(pred_token_id)
+
+                # Decode the generated tokens
+                output = tokenizer.decode(generated_tokens)
+
                 print(f"Input: {sentence}")
-                print(f"Prediction: {output.strip()}")
+                print(f"Prediction: {output}")
                 print("=" * 50)
 
             except Exception as e:
@@ -160,13 +278,8 @@ def test(model_path: str, device: str) -> None:
 
 def run(device: str, mode: str) -> None:
     print(device)
-    train_dataloader = create_dataloader(
-        str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
-        MAX_LENGTH,
-        BATCH_SIZE,
-    )
     if mode == "train":
-        train(device, train_dataloader)
+        train(device)
     elif mode == "eval":
         eval(device, str(BASE_DIR / "best_model.pth"))
     else:
