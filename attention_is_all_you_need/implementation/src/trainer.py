@@ -5,8 +5,6 @@ import tqdm
 from torchmetrics.text import BLEUScore
 from tokenizers.implementations import CharBPETokenizer
 
-from attention_is_all_you_need.implementation.src.data import Wmt14Dataset
-
 
 class Trainer:
     def __init__(
