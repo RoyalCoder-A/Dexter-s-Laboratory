@@ -158,7 +158,22 @@ def test(model_path: str, device: str) -> None:
                 continue
 
 
-def run() -> None:
+def run(device: str, mode: str) -> None:
+    print(device)
+    train_dataloader = create_dataloader(
+        str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
+        MAX_LENGTH,
+        BATCH_SIZE,
+    )
+    if mode == "train":
+        train(device, train_dataloader)
+    elif mode == "eval":
+        eval(device, str(BASE_DIR / "best_model.pth"))
+    else:
+        test(str(BASE_DIR / "best_model.pth"), device)
+
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", default="cpu", help="Device to use (cpu/cuda/mps)")
     parser.add_argument(
@@ -169,20 +184,5 @@ def run() -> None:
     )
     args = parser.parse_args()
     device = args.device
-    print(device)
-    train_dataloader = create_dataloader(
-        str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
-        MAX_LENGTH,
-        BATCH_SIZE,
-    )
-    if args.mode == "train":
-        train(device, train_dataloader)
-    elif args.mode == "eval":
-        eval(device, str(BASE_DIR / "best_model.pth"))
-    else:
-        test(str(BASE_DIR / "best_model.pth"), device)
-
-
-if __name__ == "__main__":
     create_bpe_vocab()
-    run()
+    run(device, args.mode)
