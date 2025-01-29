@@ -22,6 +22,7 @@ class Trainer:
         batch_size: int,
         num_epochs: int,
         tokenizer: CharBPETokenizer,
+        checkpoint_path: str,
         device: str,
     ):
         self.model = model
@@ -39,6 +40,7 @@ class Trainer:
         self.current_step = 0
         self.tokenizer = tokenizer
         self.bleu_fn = BLEUScore().to(device)
+        self.checkpoint_path = checkpoint_path
 
     def train(self):
         for i in range(self.num_epochs):
@@ -51,7 +53,7 @@ class Trainer:
             if test_loss < self.best_loss:
                 print("Saving")
                 self.best_loss = test_loss
-                torch.save(self.model.state_dict(), "best_model.pth")
+                torch.save(self.model.state_dict(), self.checkpoint_path)
             print("=" * 20)
             self.summary_writer.add_scalar("train_loss", train_loss, i)
             self.summary_writer.add_scalar("test_loss", test_loss, i)

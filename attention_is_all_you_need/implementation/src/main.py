@@ -57,6 +57,7 @@ def train(
         warmup_steps=4000,
         num_epochs=12,
         summary_writer=summary_writer,
+        checkpoint_path=str(BASE_DIR / "best_model.pth"),
     )
     if device == "cuda":
         torch.cuda.empty_cache()
@@ -177,7 +178,6 @@ def run() -> None:
         str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
         MAX_LENGTH,
         BATCH_SIZE,
-        limit=10000,
     )
     if args.mode == "train":
         train(device, train_dataloader, tokenizer)
