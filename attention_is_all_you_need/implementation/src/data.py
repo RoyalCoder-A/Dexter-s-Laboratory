@@ -57,15 +57,28 @@ class Wmt14Dataset(Dataset):
         item = self.data[idx]
         source = item[0]
         target = item[1]
-
         source_tokenizer = self.tokenizer.encode(source)
+        original_post_processor = self.tokenizer.post_processor
+        self.tokenizer.post_processor = None  # type: ignore
         target_tokenizer = self.tokenizer.encode(target)
-        encoder_input = source_tokenizer.ids
-        decoder_input = target_tokenizer.ids
-        decoder_output = target_tokenizer.ids[1:] + [self.pad_token_id]
+        self.tokenizer.post_processor = original_post_processor  # type: ignore
+        cls_token_id = self.tokenizer.token_to_id("[CLS]")
+        sep_token_id = self.tokenizer.token_to_id("[SEP]")
+        decoder_input = [cls_token_id] + target_tokenizer.ids
+        decoder_output = target_tokenizer.ids + [sep_token_id]
+        if len(decoder_input) > self.max_length:
+            decoder_input = decoder_input[: self.max_length]
+            decoder_output = decoder_output[: self.max_length]
+        else:
+            decoder_input += [self.pad_token_id] * (
+                self.max_length - len(decoder_input)
+            )
+            decoder_output += [self.pad_token_id] * (
+                self.max_length - len(decoder_output)
+            )
 
         return (
-            torch.tensor(encoder_input).type(torch.long),
+            torch.tensor(source_tokenizer.ids).type(torch.long),
             torch.tensor(decoder_input).type(torch.long),
             torch.tensor(decoder_output).type(torch.long),
             " ".join(target_tokenizer.tokens),
