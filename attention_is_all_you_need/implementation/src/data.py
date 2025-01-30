@@ -64,7 +64,7 @@ class Wmt14Dataset(Dataset):
         self.tokenizer.post_processor = original_post_processor  # type: ignore
         cls_token_id = self.tokenizer.token_to_id("[CLS]")
         sep_token_id = self.tokenizer.token_to_id("[SEP]")
-        decoder_input = [cls_token_id] + target_tokenizer.ids
+        decoder_input = [cls_token_id] + target_tokenizer.ids[:-1]
         decoder_output = target_tokenizer.ids + [sep_token_id]
         if len(decoder_input) > self.max_length:
             decoder_input = decoder_input[: self.max_length]
