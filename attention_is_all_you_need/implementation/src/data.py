@@ -66,16 +66,14 @@ class Wmt14Dataset(Dataset):
         sep_token_id = self.tokenizer.token_to_id("[SEP]")
         decoder_input = [cls_token_id] + target_tokenizer.ids[:-1]
         decoder_output = target_tokenizer.ids + [sep_token_id]
-        if len(decoder_input) > self.max_length:
-            decoder_input = decoder_input[: self.max_length]
-            decoder_output = decoder_output[: self.max_length]
-        else:
-            decoder_input += [self.pad_token_id] * (
-                self.max_length - len(decoder_input)
-            )
-            decoder_output += [self.pad_token_id] * (
-                self.max_length - len(decoder_output)
-            )
+        decoder_input = decoder_input + [self.pad_token_id] * (
+            self.max_length - len(decoder_input)
+        )
+        decoder_output = decoder_output + [self.pad_token_id] * (
+            self.max_length - len(decoder_output)
+        )
+        decoder_input = decoder_input[: self.max_length]
+        decoder_output = decoder_output[: self.max_length]
 
         return (
             torch.tensor(source_tokenizer.ids).type(torch.long),
