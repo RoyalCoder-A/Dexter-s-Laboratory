@@ -31,6 +31,13 @@ class DecoderSubLayer(torch.nn.Module):
         lookahead_mask: torch.Tensor,
         encoder_output: torch.Tensor,
     ) -> torch.Tensor:
+        """
+        x: [batch_size, dec_seq_len, d_model]
+        encoder_padding_mask: [batch_size, 1, 1, enc_seq_len]
+        decoder_padding_mask: [batch_size, 1, 1, dec_seq_len]
+        lookahead_mask: [dec_seq_len, dec_seq_len]
+        encoder_output: [batch_size, enc_seq_len, d_model]
+        """
         x = self.masked_attention_normalizer(
             self.masked_attention_dropout(
                 self.masked_attention(x, lookahead_mask & decoder_padding_mask) + x
@@ -65,6 +72,13 @@ class Decoder(torch.nn.Module):
         look_ahead_mask: torch.Tensor,
         encoder_output: torch.Tensor,
     ) -> torch.Tensor:
+        """
+        x: [batch_size, dec_seq_len, d_model]
+        encoder_padding_mask: [batch_size, 1, 1, enc_seq_len]
+        decoder_padding_mask: [batch_size, 1, 1, dec_seq_len]
+        look_ahead_mask: [dec_seq_len, dec_seq_len]
+        encoder_output: [batch_size, enc_seq_len, d_model]
+        """
         for layer in self.layers:
             x = layer(
                 x,
@@ -72,6 +86,6 @@ class Decoder(torch.nn.Module):
                 decoder_padding_mask,
                 look_ahead_mask,
                 encoder_output,
-            )
-        x = self.final_normalizer(x)
+            )  # [batch_size, dec_seq_len, d_model]
+        x = self.final_normalizer(x)  # [batch_size, dec_seq_len, d_model]
         return x

@@ -4,7 +4,6 @@ from pathlib import Path
 
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
-from torch.utils.data import DataLoader
 import tqdm
 from torchmetrics.text import BLEUScore
 
@@ -39,8 +38,6 @@ def test(model_path: str, device: str) -> None:
                 sentence = input("Enter sentence to test (or 'q' to quit): ")
                 if sentence.lower() == "q":
                     break
-
-                # Encode and pad input sentence
                 encoder_tokens = tokenizer.encode(sentence).ids
                 print("\nEncoder input:", tokenizer.decode(encoder_tokens))
 
@@ -52,14 +49,10 @@ def test(model_path: str, device: str) -> None:
                     .to(device)
                     .unsqueeze(0)
                 )
-
-                # Start with CLS token and explicitly decode it to verify
                 decoder_tokens = torch.tensor(
                     [[2] + [0] * (MAX_LENGTH - 1)], dtype=torch.long
                 ).to(device)
                 generated = []
-                current_length = 1  # Start after CLS token
-
                 print(
                     f"Initial decoder input:",
                     tokenizer.decode(decoder_tokens[0].tolist()),
@@ -69,46 +62,18 @@ def test(model_path: str, device: str) -> None:
                     print(f"\nStep {i+1}")
                     print(
                         "Current decoder:",
-                        tokenizer.decode(decoder_tokens[0, :current_length].tolist()),
+                        tokenizer.decode(decoder_tokens[0, : i + 1].tolist()),
                     )
 
                     pred_logits = transformer(encoder_input_tokens, decoder_tokens)
-                    next_token_logits = pred_logits[0, current_length - 1, :]
-
-                    # Apply softmax with temperature
-                    temperature = 0.7
-                    next_token_logits = next_token_logits / temperature
+                    next_token_logits = pred_logits[0, i, :]
                     probs = torch.softmax(next_token_logits, dim=-1)
-
-                    # Zero out probabilities for special tokens except SEP
-                    probs[0] = 0  # PAD
-                    probs[1] = 0  # UNK
-                    probs[2] = 0  # CLS
-                    probs[4] = 0  # MASK
-
-                    # Renormalize probabilities
-                    probs = probs / probs.sum()
-
-                    # Get top 5 predictions
-                    top_probs, top_indices = torch.topk(probs, 5)
-                    print("\nTop 5 predictions:")
-                    for prob, idx in zip(
-                        top_probs.cpu().numpy(), top_indices.cpu().numpy()
-                    ):
-                        token = tokenizer.decode([idx])
-                        print(f"Token: {token} (ID: {idx}), Probability: {prob:.4f}")
-
-                    # Sample from the distribution
-                    pred_token_id = torch.multinomial(probs, num_samples=1).item()
+                    pred_token_id = torch.argmax(probs).item()
                     generated.append(pred_token_id)
-
                     if pred_token_id == 3:  # SEP token
                         print("Generated SEP token, stopping.")
                         break
-
-                    # Update decoder input tensor directly
-                    decoder_tokens[0, current_length] = pred_token_id
-                    current_length += 1
+                    decoder_tokens[0, i + 1] = pred_token_id
 
                 output = tokenizer.decode(generated)
 
@@ -131,7 +96,7 @@ def _pad_sequence(seq: list[int], max_length: int, pad_token_id: int) -> list[in
     return seq + [pad_token_id] * (max_length - len(seq))
 
 
-def train(device: str) -> None:
+def train(device: str, epochs: int) -> None:
     train_dataloader = create_dataloader(
         str(Path(__file__).parent / ".." / "data" / "wmt14_translate_de-en_train.csv"),
         MAX_LENGTH,
@@ -161,7 +126,7 @@ def train(device: str) -> None:
         device=device,
         tokenizer=get_tokenizer(),
         warmup_steps=4000,
-        num_epochs=10,
+        num_epochs=epochs,
         summary_writer=summary_writer,
         checkpoint_path=str(BASE_DIR / "best_model.pth"),
     )
@@ -276,10 +241,10 @@ def eval(device: str, model_path: str) -> None:
                 continue
 
 
-def run(device: str, mode: str) -> None:
+def run(device: str, mode: str, epochs: int) -> None:
     print(device)
     if mode == "train":
-        train(device)
+        train(device, epochs)
     elif mode == "eval":
         eval(device, str(BASE_DIR / "best_model.pth"))
     else:
@@ -290,6 +255,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", default="cpu", help="Device to use (cpu/cuda/mps)")
     parser.add_argument(
+        "--epochs", default="10", help="No. of epochs to train for", type=int
+    )
+    parser.add_argument(
         "--mode",
         default="train",
         help="Mode of application (train/eval/test)",
@@ -298,4 +266,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     device = args.device
     create_bpe_vocab()
-    run(device, args.mode)
+    run(device, args.mode, args.epochs)

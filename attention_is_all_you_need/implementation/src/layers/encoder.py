@@ -18,6 +18,10 @@ class EncoderSublayer(torch.nn.Module):
         self.to(device)
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """
+        x: [batch_size, enc_seq_len, d_model]
+        mask: [batch_size, 1, 1, enc_seq_len
+        """
         x = self.multi_head_normalizer(
             self.multi_head_dropout(self.multi_head_attention(x, mask)) + x
         )
@@ -37,6 +41,10 @@ class Encoder(torch.nn.Module):
         self.to(device)
 
     def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """
+        x: [batch_size, enc_seq_len, d_model]
+        mask: [batch_size, 1, 1, enc_seq_len]
+        """
         for layer in self.sub_layers:
             x = layer(x, mask)
         return x
