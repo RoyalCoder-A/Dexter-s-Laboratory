@@ -35,59 +35,46 @@ def test(model_path: str, device: str) -> None:
     with torch.inference_mode():
         while True:
             try:
-                sentence = input("Enter sentence to test (or 'q' to quit): ")
+                sentence = input("Enter German sentence (or 'q' to quit): ")
                 if sentence.lower() == "q":
                     break
+
+                # Get an unrelated English sentence for testing
+                dummy_english = "This is a completely unrelated English sentence."
+
+                # Prepare inputs
                 encoder_tokens = tokenizer.encode(sentence).ids
-                print("\nEncoder input:", tokenizer.decode(encoder_tokens))
+                decoder_tokens = tokenizer.encode(dummy_english).ids
 
-                encoder_input_tokens = (
-                    torch.tensor(
-                        _pad_sequence(encoder_tokens, MAX_LENGTH, pad_token_id=0),
-                        dtype=torch.long,
-                    )
-                    .to(device)
-                    .unsqueeze(0)
+                # Pad sequences
+                encoder_input = torch.tensor(
+                    [
+                        encoder_tokens
+                        + [tokenizer.token_to_id("[PAD]")]
+                        * (MAX_LENGTH - len(encoder_tokens))
+                    ],
+                    device=device,
                 )
-                decoder_tokens = torch.tensor(
-                    [[2] + [0] * (MAX_LENGTH - 1)], dtype=torch.long
-                ).to(device)
-                generated = []
-                print(
-                    f"Initial decoder input:",
-                    tokenizer.decode(decoder_tokens[0].tolist()),
+                decoder_input = torch.tensor(
+                    [
+                        decoder_tokens
+                        + [tokenizer.token_to_id("[PAD]")]
+                        * (MAX_LENGTH - len(decoder_tokens))
+                    ],
+                    device=device,
                 )
 
-                for i in range(MAX_LENGTH - 1):
-                    print(f"\nStep {i+1}")
-                    print(
-                        "Current decoder:",
-                        tokenizer.decode(decoder_tokens[0, : i + 1].tolist()),
-                    )
+                # Get model prediction
+                output = transformer(encoder_input, decoder_input)
+                pred_tokens = torch.argmax(output[0], dim=-1)
 
-                    pred_logits = transformer(encoder_input_tokens, decoder_tokens)
-                    next_token_logits = pred_logits[0, i, :]
-                    probs = torch.softmax(next_token_logits, dim=-1)
-                    pred_token_id = torch.argmax(probs).item()
-                    generated.append(pred_token_id)
-                    if pred_token_id == 3:  # SEP token
-                        print("Generated SEP token, stopping.")
-                        break
-                    decoder_tokens[0, i + 1] = pred_token_id
-
-                output = tokenizer.decode(generated)
-
-                print(f"\nInput: {sentence}")
-                print(f"Prediction: {output}")
-                print(f"Generated token IDs: {generated}")
+                print("\nGerman input:", sentence)
+                print("Decoder input (unrelated):", dummy_english)
+                print("Model output:", tokenizer.decode(pred_tokens.tolist()))
                 print("=" * 50)
 
             except Exception as e:
                 print(f"Error occurred: {str(e)}")
-                print(f"Error type: {type(e)}")
-                import traceback
-
-                traceback.print_exc()
                 continue
 
 
