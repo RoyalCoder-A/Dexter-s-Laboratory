@@ -1,3 +1,0 @@
-attention_is_all_you_need/implementation/data/wmt14_translate_de-en_train.csv filter=lfs diff=lfs merge=lfs -text
-attention_is_all_you_need/implementation/data/wmt14_translate_de-en_validation.csv filter=lfs diff=lfs merge=lfs -text
-attention_is_all_you_need/implementation/data/wmt14_translate_de-en_test.csv filter=lfs diff=lfs merge=lfs -text
