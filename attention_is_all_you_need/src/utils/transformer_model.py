@@ -32,7 +32,7 @@ class TransformerModel(torch.nn.Module):
     def forward(
         self, encoder_input: torch.Tensor, decoder_input: torch.Tensor
     ) -> torch.Tensor:
-        causal_mask = self._generate_causal_mask(decoder_input).to(decoder_input.device)
+        causal_mask = self._generate_causal_mask(decoder_input)
         encoder_input = self.pre_layer(encoder_input)
         encoder_output = self.encoder(encoder_input)
         decoder_input = self.pre_layer(decoder_input)
@@ -42,7 +42,11 @@ class TransformerModel(torch.nn.Module):
     def _generate_causal_mask(self, decoder_input: torch.Tensor) -> torch.Tensor:
         return (
             torch.triu(
-                torch.ones(decoder_input.shape[1], decoder_input.shape[1]),
+                torch.ones(
+                    decoder_input.shape[1],
+                    decoder_input.shape[1],
+                    device=decoder_input.device,
+                ),
                 diagonal=1,
             )
             .type(torch.int)
