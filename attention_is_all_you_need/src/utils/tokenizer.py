@@ -48,13 +48,5 @@ def train_bpe_tokenizer() -> None:
         pad_id=tokenizer.token_to_id("[PAD]"), pad_token="[PAD]", length=MAX_LENGTH
     )
     tokenizer.enable_truncation(max_length=MAX_LENGTH)
-    tokenizer.post_processor = TemplateProcessing(
-        single="[CLS] $A [SEP]",  # Single sentence format
-        pair="[CLS] $A [SEP] $B:1 [SEP]:1",  # Paired sentence format
-        special_tokens=[
-            ("[CLS]", tokenizer.token_to_id("[CLS]")),
-            ("[SEP]", tokenizer.token_to_id("[SEP]")),
-        ],
-    )  # type: ignore
     tokenizer.save(str(bpe_path))
     bpe_dataset_path.unlink()
