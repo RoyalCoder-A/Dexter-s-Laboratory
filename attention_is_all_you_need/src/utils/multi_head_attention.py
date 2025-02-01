@@ -5,7 +5,7 @@ from attention_is_all_you_need.src.utils.scaled_dot_product import ScaledDotProd
 
 class MultiheadAttention(torch.nn.Module):
 
-    def __init__(self, d_model: int, n_heads: int, p_dropout: float = 0.1):
+    def __init__(self, d_model: int, n_heads: int, device: str, p_dropout: float = 0.1):
         assert (
             d_model % n_heads == 0
         ), "Model dimension must be divisible by number of heads"
@@ -14,10 +14,11 @@ class MultiheadAttention(torch.nn.Module):
         self.k_proj = torch.nn.Linear(d_model, d_model)
         self.v_proj = torch.nn.Linear(d_model, d_model)
         self.out_proj = torch.nn.Linear(d_model, d_model)
-        self.attention = ScaledDotProduct(p_dropout)
+        self.attention = ScaledDotProduct(device, p_dropout)
         self.n_heads = n_heads
         self.d_model = d_model
         self._reset_parameters()
+        self.to(device)
 
     def _reset_parameters(self) -> None:
         for p in self.parameters():
