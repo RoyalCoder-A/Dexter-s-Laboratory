@@ -71,7 +71,9 @@ class Trainer:
                 encoder_input.to(self.device),
                 decoder_input.to(self.device),
             )
-            loss: torch.Tensor = self.loss_fn(pred_logits, tgt.to(self.device))
+            pred_logits = pred_logits.reshape(-1, pred_logits.size(-1))
+            tgt = tgt.to(self.device).reshape(-1)
+            loss: torch.Tensor = self.loss_fn(pred_logits, tgt)
             loss_number = loss.detach().cpu().item()
             losses.append(loss_number)
             self.optimizer.zero_grad()
@@ -93,7 +95,9 @@ class Trainer:
                     encoder_input.to(self.device),
                     decoder_input.to(self.device),
                 )
-                loss: torch.Tensor = self.loss_fn(pred_logits, tgt.to(self.device))
+                pred_logits = pred_logits.reshape(-1, pred_logits.size(-1))
+                tgt = tgt.to(self.device).reshape(-1)
+                loss: torch.Tensor = self.loss_fn(pred_logits, tgt)
                 loss_number = loss.detach().cpu().item()
                 losses.append(loss_number)
                 bleu = self._calculate_bleu(pred_logits, tgt)

@@ -6,7 +6,7 @@ from attention_is_all_you_need.src.utils.tokenizer import get_tokenizer
 
 
 def get_dataloader(
-    split: Literal["train", "valid", "test"], batch_size: int
+    split: Literal["train", "validation", "test"], batch_size: int
 ) -> torch.utils.data.DataLoader:
     ds = Wmt14Dataset(split)
     dl = torch.utils.data.DataLoader(
@@ -16,7 +16,7 @@ def get_dataloader(
 
 
 class Wmt14Dataset(torch.utils.data.Dataset):
-    def __init__(self, split: Literal["train", "valid", "test"]) -> None:
+    def __init__(self, split: Literal["train", "validation", "test"]) -> None:
         super().__init__()
         self.tokenizer = get_tokenizer()
         self.dataset = load_dataset("wmt14", "de-en", split=split).to_list()  # type: ignore
