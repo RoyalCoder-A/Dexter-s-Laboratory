@@ -36,6 +36,6 @@ class Wmt14Dataset(torch.utils.data.Dataset):
         dec_src_ids = self.tokenizer.encode(dec_src).ids
         return (
             torch.tensor(src_ids).long(),
-            torch.tensor(tgt_ids).long(),
             torch.tensor(dec_src_ids).long(),
+            torch.tensor(tgt_ids).long(),
         )
