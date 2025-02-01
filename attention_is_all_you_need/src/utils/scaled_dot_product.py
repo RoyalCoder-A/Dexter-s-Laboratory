@@ -4,10 +4,9 @@ import torch
 
 class ScaledDotProduct(torch.nn.Module):
 
-    def __init__(self, device: str, p_dropout: float = 0.1):
+    def __init__(self, p_dropout: float = 0.1):
         super().__init__()
         self.dropout = torch.nn.Dropout(p_dropout)
-        self.to(device)
 
     def forward(
         self,

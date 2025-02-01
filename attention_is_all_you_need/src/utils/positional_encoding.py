@@ -2,7 +2,7 @@ import torch
 
 
 class PositionalEncoding(torch.nn.Module):
-    def __init__(self, d_model: int, device: str, max_seq_length: int = 5000):
+    def __init__(self, d_model: int, max_seq_length: int = 5000):
         super().__init__()
 
         # Create positional encoding matrix once during initialization
@@ -19,7 +19,6 @@ class PositionalEncoding(torch.nn.Module):
 
         # Register as buffer (won't be updated during backprop)
         self.register_buffer("pe", pe.unsqueeze(0))
-        self.to(device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
