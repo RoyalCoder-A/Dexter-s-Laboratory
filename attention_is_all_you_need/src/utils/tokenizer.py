@@ -12,22 +12,22 @@ MAX_LENGTH = 50
 VOCAB_SIZE = 37_000
 
 
-def get_tokenizer() -> Tokenizer:
-    bpe_path = DATA_DIR_PATH / "bpe_tokenizer.json"
+def get_tokenizer(data_path: Path = DATA_DIR_PATH) -> Tokenizer:
+    bpe_path = data_path / "bpe_tokenizer.json"
     tokenizer = Tokenizer.from_file(str(bpe_path))
     return tokenizer
 
 
-def train_bpe_tokenizer() -> None:
-    DATA_DIR_PATH.mkdir(parents=True, exist_ok=True)
-    bpe_path = DATA_DIR_PATH / "bpe_tokenizer.json"
-    bpe_dataset_path = DATA_DIR_PATH / "tmp.txt"
+def train_bpe_tokenizer(data_path: Path = DATA_DIR_PATH) -> None:
+    data_path.mkdir(parents=True, exist_ok=True)
+    bpe_path = data_path / "bpe_tokenizer.json"
+    bpe_dataset_path = data_path / "tmp.txt"
     if bpe_path.is_file():
         print("BPE tokenizer exists, skipping training")
         return
     dataset = load_dataset("wmt14", "de-en", split="train")
     if not bpe_dataset_path.is_file():
-        with open(DATA_DIR_PATH / "tmp.txt", "a") as f:
+        with open(data_path / "tmp.txt", "a") as f:
             for data in tqdm.tqdm(dataset.iter(100), total=dataset.num_rows / 100):  # type: ignore
                 for translation in data["translation"]:  # type: ignore
                     f.write(translation["en"] + "\n")

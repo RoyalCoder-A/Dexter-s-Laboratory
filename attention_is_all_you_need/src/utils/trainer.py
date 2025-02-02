@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Literal
 
+from tokenizers import Tokenizer
 import torch
 import tqdm
-from attention_is_all_you_need.src.utils.tokenizer import get_tokenizer
 from attention_is_all_you_need.src.utils.transformer_model import TransformerModel
 from torchmetrics.text import BLEUScore
 from torch.utils.tensorboard.writer import SummaryWriter
@@ -17,6 +17,7 @@ class Trainer:
         epochs: int,
         warmup_steps: int,
         d_model: int,
+        tokenizer: Tokenizer,
         device: Literal["cpu", "cuda", "mps"],
         train_dl: torch.utils.data.DataLoader,
         valid_dl: torch.utils.data.DataLoader,
@@ -37,7 +38,7 @@ class Trainer:
             self.transformer_model.parameters(), betas=(0.9, 0.98), eps=1e-9
         )
         self.summary_writer = summary_writer
-        self.tokenizer = get_tokenizer()
+        self.tokenizer = tokenizer
         self.current_step = 0
         self.checkpoint_path = checkpoint_path
 

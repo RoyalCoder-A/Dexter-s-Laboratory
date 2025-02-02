@@ -6,6 +6,7 @@ from attention_is_all_you_need.src.utils.dataset import get_dataloader
 from attention_is_all_you_need.src.utils.tokenizer import (
     DATA_DIR_PATH,
     VOCAB_SIZE,
+    get_tokenizer,
     train_bpe_tokenizer,
 )
 from attention_is_all_you_need.src.utils.trainer import Trainer
@@ -20,7 +21,8 @@ def train(
     device: Literal["cpu", "cuda", "mps"],
     data_path: Path = DATA_DIR_PATH,
 ):
-    train_bpe_tokenizer()
+    train_bpe_tokenizer(data_path)
+    tokenizer = get_tokenizer(data_path)
     transformer_model = TransformerModel(VOCAB_SIZE, 512, 6, 2048, 8, 0.1)
     train_dl = get_dataloader("train", batch_size)
     val_dl = get_dataloader("validation", batch_size)
@@ -43,6 +45,7 @@ def train(
         epochs,
         4000,
         512,
+        tokenizer,
         device,
         train_dl,
         val_dl,
