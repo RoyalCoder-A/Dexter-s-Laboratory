@@ -56,10 +56,7 @@ class Trainer:
             print(f"Test BLEU: {test_bleu:.4f}")
             if test_loss < best_loss:
                 best_loss = test_loss
-                torch.save(
-                    self.transformer_model.state_dict(),
-                    self.checkpoint_path,
-                )
+                self._save_checkpoint()
             print("=" * 80)
 
     def _train_step(self) -> float:
@@ -95,9 +92,10 @@ class Trainer:
                     encoder_input.to(self.device),
                     decoder_input.to(self.device),
                 )
-                pred_logits = pred_logits.reshape(-1, pred_logits.size(-1))
-                tgt = tgt.to(self.device).reshape(-1)
-                loss: torch.Tensor = self.loss_fn(pred_logits, tgt)
+                loss: torch.Tensor = self.loss_fn(
+                    pred_logits.reshape(-1, pred_logits.size(-1)),
+                    tgt.to(self.device).reshape(-1),
+                )
                 loss_number = loss.detach().cpu().item()
                 losses.append(loss_number)
                 bleu = self._calculate_bleu(pred_logits, tgt)
@@ -119,8 +117,15 @@ class Trainer:
     def _update_lr(self) -> float:
         self.current_step += 1
         lr = self.d_model**-0.5 * min(
-            self.current_step**-0.05, self.current_step * self.warmup_steps**-1.5
+            self.current_step**-0.5, self.current_step * self.warmup_steps**-1.5
         )
         for param in self.optimizer.param_groups:
             param["lr"] = lr
         return lr
+
+    def _save_checkpoint(self) -> None:
+        self.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            self.transformer_model.state_dict(),
+            self.checkpoint_path,
+        )
