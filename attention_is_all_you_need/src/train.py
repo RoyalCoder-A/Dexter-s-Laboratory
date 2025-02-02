@@ -12,8 +12,6 @@ from attention_is_all_you_need.src.utils.tokenizer import (
 from attention_is_all_you_need.src.utils.trainer import Trainer
 from attention_is_all_you_need.src.utils.transformer_model import TransformerModel
 
-BACKEND_COMPILED_MAP = {"cuda": "cudagraphs", "cpu": "inductor", "mps": "mps"}
-
 
 def train(
     batch_size: int,
@@ -38,7 +36,7 @@ def train(
     else:
         print(f"No checkpoint found at {checkpoint_path}")
     transformer_model = transformer_model.to(device)
-    transformer_model.compile(backend=BACKEND_COMPILED_MAP[device])
+    transformer_model.compile()
     trainer = Trainer(
         transformer_model,
         batch_size,
