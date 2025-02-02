@@ -24,8 +24,8 @@ def train(
     train_bpe_tokenizer(data_path)
     tokenizer = get_tokenizer(data_path)
     transformer_model = TransformerModel(VOCAB_SIZE, 512, 6, 2048, 8, 0.1)
-    train_dl = get_dataloader("train", batch_size)
-    val_dl = get_dataloader("validation", batch_size)
+    train_dl = get_dataloader("train", batch_size, tokenizer)
+    val_dl = get_dataloader("validation", batch_size, tokenizer)
     summary_writer = SummaryWriter(
         data_path / "runs" / f"{device}__{batch_size}__{epochs}"
     )
