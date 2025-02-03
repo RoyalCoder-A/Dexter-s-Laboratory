@@ -18,16 +18,20 @@ def train(
     epochs: int,
     device: Literal["cpu", "cuda", "mps"],
     data_path: Path = DATA_DIR_PATH,
+    train_name: str = "",
 ):
     train_bpe_tokenizer(data_path)
     tokenizer = get_tokenizer(data_path)
     transformer_model = TransformerModel(VOCAB_SIZE, 512, 6, 2048, 8, 0.1)
     train_dl = get_dataloader("train", batch_size, tokenizer)
     val_dl = get_dataloader("validation", batch_size, tokenizer)
-    summary_writer = SummaryWriter(
-        data_path / "runs" / f"{device}__{batch_size}__{epochs}"
-    )
-    checkpoint_path = data_path / "checkpoints" / f"{device}__{batch_size}__{epochs}.pt"
+    summary_writer_path = data_path / "runs" / f"{device}__{batch_size}__{epochs}"
+    checkpoint_path = data_path / "checkpoints"
+    if train_name:
+        summary_writer_path = summary_writer_path / train_name
+        checkpoint_path = checkpoint_path / train_name
+    checkpoint_path = checkpoint_path / f"{device}__{batch_size}__{epochs}.pt"
+    summary_writer = SummaryWriter(summary_writer_path)
     if checkpoint_path.exists():
         transformer_model.load_state_dict(
             torch.load(checkpoint_path, weights_only=False)
