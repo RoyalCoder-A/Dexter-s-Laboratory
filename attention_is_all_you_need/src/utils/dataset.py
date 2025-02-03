@@ -40,11 +40,12 @@ class Wmt14Dataset(torch.utils.data.Dataset):
         src: str = item["de"]
         tgt: str = item["en"]
         dec_src = "[CLS] " + " ".join(tgt.split()[:-1])
+        dec_tgt = " ".join(tgt.split()) + " [SEP]"
         src_ids = self.tokenizer.encode(src).ids
-        tgt_ids = self.tokenizer.encode(tgt).ids
+        dec_tgt_ids = self.tokenizer.encode(dec_tgt).ids
         dec_src_ids = self.tokenizer.encode(dec_src).ids
         return (
             torch.tensor(src_ids).long(),
             torch.tensor(dec_src_ids).long(),
-            torch.tensor(tgt_ids).long(),
+            torch.tensor(dec_tgt_ids).long(),
         )

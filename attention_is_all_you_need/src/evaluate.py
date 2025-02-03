@@ -32,6 +32,7 @@ def evaluate(
     dataset = load_dataset("wmt14", "de-en", split="train")
     with torch.inference_mode():
         while True:
+            test_sentence = tokenizer.encode("Mew Mew!").ids
             input_seq = input("Enter sentence: (or q to exit, r for random)")
             if input_seq == "q":
                 break
@@ -43,9 +44,11 @@ def evaluate(
             encoder_ids = (
                 torch.tensor([tokenizer.encode(input_seq).ids]).to(device).long()
             )
-            decoder_ids = [tokenizer.token_to_id("[CLS]")] + [
-                tokenizer.token_to_id("[PAD]")
-            ] * (MAX_LENGTH - 1)
+            decoder_ids = (
+                [tokenizer.token_to_id("[CLS]")]
+                + test_sentence[:7]
+                + [tokenizer.token_to_id("[PAD]")] * (MAX_LENGTH - 8)
+            )
             final_result_ids = []
             for i in range(MAX_LENGTH - 1):
                 result_logits = transformer_model(
