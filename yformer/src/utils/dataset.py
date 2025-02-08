@@ -9,9 +9,10 @@ def create_dataloader(
     input_window: int,
     pred_window: int,
     split: Literal["train", "validation", "test"],
+    scaler: StandardScaler,
     batch_size: int,
 ):
-    ds = ETTHourDataset(input_window, pred_window, split)
+    ds = ETTHourDataset(input_window, pred_window, split, scaler)
     return torch.utils.data.DataLoader(
         ds, batch_size=batch_size, shuffle=True, pin_memory=True
     )
@@ -23,6 +24,7 @@ class ETTHourDataset(torch.utils.data.Dataset):
         input_window: int,
         pred_window: int,
         split: Literal["train", "validation", "test"],
+        scaler: StandardScaler,
     ):
         ds = load_dataset(
             "ett", "h1", multivariate=True, split=split, trust_remote_code=True
@@ -30,7 +32,7 @@ class ETTHourDataset(torch.utils.data.Dataset):
         self.input_window = input_window
         self.pred_window = pred_window
         self.ds = numpy.array(ds.to_list()[0]["target"])  # type: ignore
-        self.scaler = StandardScaler()
+        self.scaler = scaler
         if split == "train":
             self.ds = self.scaler.fit_transform(self.ds.T).T
         else:
