@@ -103,9 +103,13 @@ class DecoderLayer(torch.nn.Module):
         self.layer3 = DecoderFeedForwardSubLayer(d_model, dff, p_dropout)
 
     def forward(
-        self, x: torch.Tensor, encoder_output: torch.Tensor, msk: torch.Tensor
+        self,
+        x: torch.Tensor,
+        encoder_output: torch.Tensor,
+        src_msk: torch.Tensor,
+        tgt_mask: torch.Tensor,
     ) -> torch.Tensor:
-        x = self.layer3(self.layer2(self.layer1(x), encoder_output, msk))
+        x = self.layer3(self.layer2(self.layer1(x, tgt_mask), encoder_output, src_msk))
         return x
 
 
@@ -124,7 +128,13 @@ class Decoder(torch.nn.Module):
         )
         self.layer_norm = torch.nn.LayerNorm(d_model)
 
-    def forward(self, x: torch.Tensor, encoder_output: torch.Tensor, msk: torch.Tensor):
+    def forward(
+        self,
+        x: torch.Tensor,
+        encoder_output: torch.Tensor,
+        src_mask: torch.Tensor,
+        tgt_mask: torch.Tensor,
+    ):
         for layer in self.layers:
-            x = layer(x, encoder_output, msk)
+            x = layer(x, encoder_output, src_mask, tgt_mask)
         return self.layer_norm(x)

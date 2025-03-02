@@ -32,24 +32,19 @@ class TransformerModel(torch.nn.Module):
     def forward(
         self, encoder_input: torch.Tensor, decoder_input: torch.Tensor
     ) -> torch.Tensor:
-        causal_mask = self._generate_causal_mask(decoder_input)
+        src_mask, tgt_mask = self.generate_mask(encoder_input, decoder_input)
         encoder_input = self.pre_layer(encoder_input)
-        encoder_output = self.encoder(encoder_input)
+        encoder_output = self.encoder(encoder_input, src_mask)
         decoder_input = self.pre_layer(decoder_input)
-        decoder_output = self.decoder(decoder_input, encoder_output, causal_mask)
+        decoder_output = self.decoder(decoder_input, encoder_output, src_mask, tgt_mask)
         return self.head(decoder_output)
 
-    def _generate_causal_mask(self, decoder_input: torch.Tensor) -> torch.Tensor:
-        return (
-            torch.triu(
-                torch.ones(
-                    decoder_input.shape[1],
-                    decoder_input.shape[1],
-                    device=decoder_input.device,
-                ),
-                diagonal=1,
-            )
-            .type(torch.int)
-            .unsqueeze(0)
-            .unsqueeze(0)
+    def generate_mask(self, src: torch.Tensor, tgt: torch.Tensor):
+        src_mask = (src != 0).unsqueeze(1).unsqueeze(2)
+        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3)
+        seq_length = tgt.size(1)
+        nopeak_mask = (
+            1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1)
         ).bool()
+        tgt_mask = tgt_mask & nopeak_mask
+        return src_mask, tgt_mask

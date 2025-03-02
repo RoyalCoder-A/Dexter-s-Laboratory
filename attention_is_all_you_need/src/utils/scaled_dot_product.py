@@ -29,7 +29,7 @@ class ScaledDotProduct(torch.nn.Module):
             q @ k.transpose(-2, -1) / math.sqrt(d_k)
         )  # (batch_size, num_heads, seq_len, seq_len)
         if mask is not None:
-            score = score.masked_fill(mask == 1, -1e9)
+            score = score.masked_fill(mask == 0, -1e9)
         score = self.dropout(torch.nn.functional.softmax(score, dim=-1))
         out = score @ v  # (batch_size, num_heads, seq_len, d_v)
         return out
