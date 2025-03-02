@@ -109,7 +109,9 @@ class DecoderLayer(torch.nn.Module):
         src_msk: torch.Tensor,
         tgt_mask: torch.Tensor,
     ) -> torch.Tensor:
-        x = self.layer3(self.layer2(self.layer1(x, tgt_mask), encoder_output, src_msk))
+        x = self.layer1(x, tgt_mask)
+        x = self.layer2(x, encoder_output, src_msk)
+        x = self.layer3(x)
         return x
 
 
