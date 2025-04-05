@@ -7,12 +7,20 @@ from ppo.src.model_implementation import PPOModel
 
 class Agent:
     def __init__(
-        self, model: PPOModel, clip_range: float, gae_lambda: float, gamma: float
+        self,
+        model: PPOModel,
+        clip_range: float,
+        gae_lambda: float,
+        gamma: float,
+        value_coef: float,
+        entropy_coef: float,
     ):
         self.model = model
         self.clip_range = clip_range
         self.gae_lambda = gae_lambda
         self.gamma = gamma
+        self.value_coef = value_coef
+        self.entropy_coef = entropy_coef
 
     def sample_action(self, obs: np.array):
         """
@@ -26,6 +34,28 @@ class Agent:
         action = dist.sample()  # (n_envs, )
         prob_log = dist.log_prob(action)  # (n_envs, )
         return action, prob_log, values
+
+    def _calculate_loss(
+        self,
+        values: torch.Tensor,
+        next_values: torch.Tensor,
+        rewards: torch.Tensor,
+        dones: torch.Tensor,
+        probs: torch.Tensor,
+        old_probs: torch.Tensor,
+    ):
+        advantages = self._calculate_advantage(values, next_values, rewards, dones)
+        surrogate_loss = self._clipped_surrogate_objective(
+            torch.log(probs), torch.log(old_probs), advantages
+        )
+        value_loss = self._value_objective(values, next_values, rewards, dones)
+        entropy_loss = self._entropy_objective(probs)
+        loss = torch.mean(
+            surrogate_loss
+            - self.value_coef * value_loss
+            + self.entropy_coef * entropy_loss
+        )
+        return -loss
 
     def _clipped_surrogate_objective(
         self,
