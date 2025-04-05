@@ -45,6 +45,18 @@ class Agent:
         )
         return torch.min(surrogate_1, surrogate_2)  # (batch_size,)
 
+    def _value_objective(
+        self,
+        values: torch.Tensor,
+        next_values: torch.Tensor,
+        rewards: torch.Tensor,
+        dones: torch.Tensor,
+    ) -> torch.Tensor:
+        value_targets = torch.zeros_like(rewards)
+        for t in reversed(range(len(rewards))):
+            value_targets[t] = rewards[t] + self.gamma * next_values[t] * (1 - dones[t])
+        return (values - value_targets) ** 2
+
     def _calculate_advantage(
         self,
         values: torch.Tensor,
