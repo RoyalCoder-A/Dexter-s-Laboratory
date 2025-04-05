@@ -57,6 +57,11 @@ class Agent:
             value_targets[t] = rewards[t] + self.gamma * next_values[t] * (1 - dones[t])
         return (values - value_targets) ** 2
 
+    def _entropy_objective(self, probs: torch.Tensor):
+        dist = torch.distributions.Categorical(probs)
+        entropy = dist.entropy()
+        return entropy
+
     def _calculate_advantage(
         self,
         values: torch.Tensor,
