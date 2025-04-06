@@ -9,6 +9,8 @@ class Agent:
     def __init__(
         self,
         model: PPOModel,
+        optimizer: torch.optim.Optimizer,
+        n_epochs: int,
         clip_range: float,
         gae_lambda: float,
         gamma: float,
@@ -16,24 +18,26 @@ class Agent:
         entropy_coef: float,
     ):
         self.model = model
+        self.optimizer = optimizer
+        self.n_epochs = n_epochs
         self.clip_range = clip_range
         self.gae_lambda = gae_lambda
         self.gamma = gamma
         self.value_coef = value_coef
         self.entropy_coef = entropy_coef
 
-    def sample_action(self, obs: np.array):
+    def sample_action(self, obs: np.ndarray):
         """
         obs: (n_envs, obs_dim)
         """
+        self.model.eval()
         values, probs = self.model(
             obs
         )  # values: (n_envs, 1), probs: (n_envs, n_action)
         values = torch.squeeze(values)  # (n_envs, )
         dist = torch.distributions.Categorical(probs)
         action = dist.sample()  # (n_envs, )
-        prob_log = dist.log_prob(action)  # (n_envs, )
-        return action, prob_log, values
+        return action, probs, values
 
     def _calculate_loss(
         self,
@@ -101,16 +105,9 @@ class Agent:
     ):
         advantages = torch.zeros_like(rewards)
         gae = 0
-
-        # We need to go backwards through time
         for t in reversed(range(len(rewards))):
-            # Use the provided next_values directly
             next_value = next_values[t] * (1 - dones[t])
-
-            # Calculate delta (TD error) according to equation 12
             delta = rewards[t] + self.gamma * next_value - values[t]
-
-            # Calculate GAE according to equation 11 (recursive form)
             gae = delta + self.gamma * self.gae_lambda * (1 - dones[t]) * gae
             advantages[t] = gae
 
@@ -121,6 +118,5 @@ class Agent:
     ):
         value_targets = torch.zeros_like(rewards)
         for t in reversed(range(len(rewards))):
-            # For each timestep, the value target is just the reward plus discounted next value
             value_targets[t] = rewards[t] + self.gamma * next_values[t] * (1 - dones[t])
         return value_targets
