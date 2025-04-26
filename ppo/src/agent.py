@@ -208,9 +208,12 @@ class Agent:
         self.sampled_states.fill(0)
         self.sampled_actions.fill(0)
         self.sampled_rewards.fill(0)
-        self.sampled_dones.fill(0)
         self.sampled_next_states.fill(0)
+        self.sampled_dones.fill(0)
         self.log_probs.fill(0)
+        self.sampled_values.fill(0)
+        self.sampled_next_values.fill(0)
+        self.current_step = 0
 
 
 class PPODataset(torch.utils.data.Dataset):
