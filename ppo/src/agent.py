@@ -51,6 +51,7 @@ class Agent:
         self.init_lr = init_lr
         self.device = device
         self.data_path = data_path
+        self.alpha = 1
         self.learning_step = 0
 
     def act(self, state: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -103,8 +104,8 @@ class Agent:
         self._update_lr()
 
     def _update_lr(self) -> float:
-        alpha = 1 - (self.learning_step / self.max_steps)
-        lr = self.init_lr * alpha
+        self.alpha = 1 - (self.learning_step / self.max_steps)
+        lr = self.init_lr * self.alpha
         for param in self.optimizer.param_groups:
             param["lr"] = lr
         self.learning_step += 1
@@ -130,7 +131,9 @@ class Agent:
         policy_ratio = torch.exp(log_probs - sampled_log_probs)
         policy_loss = -torch.min(
             policy_ratio * sampled_advantages,
-            policy_ratio.clamp(1 - self.clip_range, 1 + self.clip_range)
+            policy_ratio.clamp(
+                1 - self.clip_range * self.alpha, 1 + self.clip_range * self.alpha
+            )
             * sampled_advantages,
         ).mean()
         entropy_loss = -self.entropy_coef * dist.entropy().mean()

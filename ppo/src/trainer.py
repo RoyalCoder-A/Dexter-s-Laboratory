@@ -37,34 +37,24 @@ class Trainer:
             current_total_steps += self.env.num_envs
             if "_final_observation" in infos:
                 for i, done in enumerate(dones):
-                    if done:  # Check if the specific environment was done
-                        # Extract episodic return from info
-                        # Use .get() for safety if "episode" key might be missing
+                    if done:
                         ep_info = infos["final_info"][i].get("episode")
                         if ep_info is not None:
                             ep_return = ep_info["r"]
                             episode_returns.append(ep_return)
-                            # Log individual episode return
                             self.summary_writer.add_scalar(
                                 "rollout/episodic_return",
                                 ep_return,
                                 current_total_steps,
                             )
-                            # Optional: print(f"Step: {current_total_steps}, Env {i}, Episode Return: {ep_return}")
 
-            # --- Logging and Evaluation (based on episodic returns) ---
-            # Log metrics periodically or when the deque is full
-            if len(episode_returns) == self.eval_window:  # Check if deque is full
+            if len(episode_returns) == self.eval_window:
                 mean_episodic_return = np.mean(episode_returns)
-
-                # Log mean episodic return
                 self.summary_writer.add_scalar(
                     "rollout/mean_episodic_return",
                     mean_episodic_return,
                     current_total_steps,
                 )
-
-                # Save best model based on mean episodic return
                 if mean_episodic_return > best_mean_episodic_return:
                     best_mean_episodic_return = mean_episodic_return
                     self.agent.save()
@@ -76,8 +66,6 @@ class Trainer:
                         best_mean_episodic_return,
                         current_total_steps,
                     )
-
-                # Print progress
                 print(
                     f"\rSteps: {current_total_steps}/{self.max_steps}, "
                     f"Mean Return ({self.eval_window} eps): {mean_episodic_return:.2f}, "
@@ -85,7 +73,6 @@ class Trainer:
                     end="",
                 )
 
-                # Check for solving condition
                 if mean_episodic_return >= self.reward_threshold:
                     print(f"\nEnvironment solved in {current_total_steps} steps!")
                     break
@@ -93,5 +80,3 @@ class Trainer:
         print("\nTraining finished.")
         self.env.close()
         self.summary_writer.close()
-
-        # ... (cleanup) ...

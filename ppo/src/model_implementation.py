@@ -2,12 +2,17 @@ import torch
 
 
 class PPOModel(torch.nn.Module):
-    def __init__(self, obs_dim: int, n_action: int, hidden_layer_size: int = 64):
+    def __init__(
+        self, obs_dim: tuple[int, ...], n_action: int, hidden_layer_size: int = 64
+    ):
         super().__init__()
         self.obs_dim = obs_dim
         self.n_action = n_action
+        input_size = 1
+        for dim in obs_dim:
+            input_size *= dim
         self.linear_layers = torch.nn.Sequential(
-            torch.nn.Linear(obs_dim, hidden_layer_size),
+            torch.nn.Linear(input_size, hidden_layer_size),
             torch.nn.ReLU(),
             torch.nn.Linear(hidden_layer_size, hidden_layer_size),
             torch.nn.ReLU(),
@@ -16,7 +21,9 @@ class PPOModel(torch.nn.Module):
         self.policy_head = torch.nn.Linear(hidden_layer_size, n_action)
 
     def forward(self, obs: torch.Tensor):
-        hidden = self.linear_layers(obs)
+        batch_size = obs.shape[0] if len(obs.shape) > 1 else 1
+        flat_obs = obs.view(batch_size, -1)
+        hidden = self.linear_layers(flat_obs)
         values = self.values_head(hidden)
         logits = self.policy_head(hidden)
         probs = torch.softmax(logits, dim=-1)
