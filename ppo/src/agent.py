@@ -21,6 +21,7 @@ class Agent:
         optimizer: torch.optim.Optimizer,
         max_steps: int,
         init_lr: float,
+        device: str,
     ):
         self.sampled_states = np.zeros((horizon, n_envs, *state_dim), dtype=np.float32)
         self.sampled_actions = np.zeros((horizon, n_envs), dtype=np.int64)
@@ -47,13 +48,15 @@ class Agent:
         self.optimizer = optimizer
         self.max_steps = max_steps
         self.init_lr = init_lr
+        self.device = device
         self.learning_step = 0
 
     def act(self, state: np.ndarray) -> tuple[np.ndarray, float]:
-        state_tensors = torch.from_numpy(state).float()
+        state_tensors = torch.from_numpy(state).float().to(self.device)
         self.brain.eval()
         with torch.inference_mode():
             _, probs = self.brain(state_tensors)
+        probs = probs.detach().cpu()
         dist = torch.distributions.Categorical(probs)
         actions = dist.sample()
         log_probs = dist.log_prob(actions)
@@ -103,6 +106,11 @@ class Agent:
             sampled_advantages,
             sampled_returns,
         ) = batch
+        sampled_states = sampled_states.to(self.device)
+        sampled_actions = sampled_actions.to(self.device)
+        sampled_log_probs = sampled_log_probs.to(self.device)
+        sampled_advantages = sampled_advantages.to(self.device)
+        sampled_returns = sampled_returns.to(self.device)
         self.brain.train()
         values, probs = self.brain(sampled_states)
         dist = torch.distributions.Categorical(probs)
