@@ -66,7 +66,7 @@ class Agent:
         log_probs = dist.log_prob(actions)
         actions = actions.numpy()
         log_probs = log_probs.numpy()
-        return actions, log_probs, values.numpy()
+        return actions, log_probs, values.view(self.n_envs).numpy()
 
     def save(self):
         self.data_path.mkdir(parents=True, exist_ok=True)
@@ -141,7 +141,6 @@ class Agent:
         loss = policy_loss + value_loss + entropy_loss
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.brain.parameters(), 0.5)
         self.optimizer.step()
 
     def _create_dataloader(self, final_next_state: np.ndarray, final_done: np.ndarray):

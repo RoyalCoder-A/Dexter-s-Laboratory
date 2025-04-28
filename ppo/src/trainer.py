@@ -35,18 +35,18 @@ class Trainer:
             self.agent.step(obs, actions, reward, obs_, dones, log_probs, values)
             obs = obs_
             current_total_steps += self.env.num_envs
-            if "_final_observation" in infos:
-                for i, done in enumerate(dones):
-                    if done:
-                        ep_info = infos["final_info"][i].get("episode")
-                        if ep_info is not None:
-                            ep_return = ep_info["r"]
-                            episode_returns.append(ep_return)
-                            self.summary_writer.add_scalar(
-                                "rollout/episodic_return",
-                                ep_return,
-                                current_total_steps,
-                            )
+            if "episode" in infos and "_episode" in infos:
+                # Find which environments had completed episodes
+                for i, completed in enumerate(infos["_episode"]):
+                    if completed:
+                        # Get the return for this completed episode
+                        ep_return = float(infos["episode"]["r"][i])
+                        episode_returns.append(ep_return)
+                        self.summary_writer.add_scalar(
+                            "rollout/episodic_return",
+                            ep_return,
+                            current_total_steps,
+                        )
 
             if len(episode_returns) == self.eval_window:
                 mean_episodic_return = np.mean(episode_returns)

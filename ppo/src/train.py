@@ -1,5 +1,7 @@
 from pathlib import Path
 import gymnasium
+from gymnasium.wrappers import RecordEpisodeStatistics
+from gymnasium.vector import VectorEnv, SyncVectorEnv
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
 from ppo.src.agent import Agent
@@ -23,19 +25,29 @@ def train(
     device: str,
     reward_threshold: float,
     log_dir: Path,
+    env_id: str,
 ):
-    env = gymnasium.make_vec(
-        "CartPole-v1",
-        num_envs=n_envs,
-        vectorization_mode="async",
-    )
+    def make_env(env_id, **kwargs):
+        """Factory function to create and wrap environments"""
+
+        def _init():
+            env = gymnasium.make(env_id, **kwargs)
+            # Add RecordEpisodeStatistics wrapper to track episode stats
+            env = RecordEpisodeStatistics(env)
+            # Add any other custom wrappers here
+            return env
+
+        return _init
+
+    env_fns = [make_env(env_id) for _ in range(n_envs)]
+    env = SyncVectorEnv(env_fns)
     obs_shape = env.observation_space.shape[1:]
     n_actions = env.action_space.nvec[0]
     model = PPOModel(obs_shape, n_actions).to(device)
-    if device == "gpu":
+    if device == "cuda":
         model.compile()
     optimizer = torch.optim.Adam(model.parameters())
-    summary_writer = SummaryWriter(str(log_dir))
+    summary_writer = SummaryWriter(str(log_dir / env_id))
     agent = Agent(
         horizon,
         obs_shape,
