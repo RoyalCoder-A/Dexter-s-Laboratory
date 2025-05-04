@@ -11,3 +11,5 @@ langchain~=0.3.24
 langchain-community~=0.3.23
 pypdf~=5.4.0
 yt-dlp~=2025.3.31
+langchain-ollama~=0.3.2
+chromadb~=1.0.7
