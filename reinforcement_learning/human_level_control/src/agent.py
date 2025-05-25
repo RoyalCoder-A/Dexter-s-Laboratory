@@ -22,9 +22,10 @@ class Agent:
         batch_size: int,
     ) -> None:
         self.q_main = Network(states_dim, n_actions).to(device)
+        self.q_target = Network(states_dim, n_actions).to(device)
         if device == "cuda":
             self.q_main.compile()
-        self.q_target = Network(states_dim, n_actions).to(device)
+            self.q_target.compile()
         self.q_target.load_state_dict(self.q_main.state_dict())
         self.memory = Memory(states_dim, max_size=memory_size)
         self.replace = replace

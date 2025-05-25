@@ -8,7 +8,7 @@ from reinforcement_learning.human_level_control.src.atari_preprocessing import (
 )
 
 if __name__ == "__main__":
-    device = "cpu"
+    device = "cuda"
     env = create_env("PongNoFrameskip-v4")
     states_dim = env.observation_space.shape
     assert states_dim
