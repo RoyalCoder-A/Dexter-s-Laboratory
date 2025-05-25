@@ -99,7 +99,9 @@ class Agent:
             target = rewards_t + self.discount * torch.max(
                 next_q_values, dim=1
             ).values * (~terminals_t)
-            loss = self.loss_fn(q_values[:, actions_t], target)
+            loss = self.loss_fn(
+                q_values[torch.arange(self.batch_size), actions_t], target
+            )
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
