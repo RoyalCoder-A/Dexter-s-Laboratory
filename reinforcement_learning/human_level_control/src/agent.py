@@ -80,33 +80,32 @@ class Agent:
         self.eps = max(self.eps - self.eps_decay, self.eps_min)
 
     def learn(self):
-        if self.step < self.batch_size:
-            return
-        states, actions, rewards, states_, terminals = self.memory.sample(
-            self.batch_size
-        )
-        states_t, actions_t, rewards_t, states__t, terminals_t = (
-            torch.from_numpy(states).float().to(self.device),
-            torch.from_numpy(actions).long().to(self.device),
-            torch.from_numpy(rewards).float().to(self.device),
-            torch.from_numpy(states_).float().to(self.device),
-            torch.from_numpy(terminals).bool().to(self.device),
-        )
-        self.q_target.eval()
-        with torch.inference_mode():
-            next_q_values = self.q_target(states__t)
-        self.q_main.train()
-        q_values = self.q_main(states_t)
-        target = rewards_t + self.discount * torch.max(next_q_values, dim=1).values * (
-            1 - terminals_t
-        )
-        loss = self.loss_fn(q_values[:, actions_t], target)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        self.step += 1
+        if self.step >= self.batch_size:
+            states, actions, rewards, states_, terminals = self.memory.sample(
+                self.batch_size
+            )
+            states_t, actions_t, rewards_t, states__t, terminals_t = (
+                torch.from_numpy(states).float().to(self.device),
+                torch.from_numpy(actions).long().to(self.device),
+                torch.from_numpy(rewards).float().to(self.device),
+                torch.from_numpy(states_).float().to(self.device),
+                torch.from_numpy(terminals).bool().to(self.device),
+            )
+            self.q_target.eval()
+            with torch.inference_mode():
+                next_q_values = self.q_target(states__t)
+            self.q_main.train()
+            q_values = self.q_main(states_t)
+            target = rewards_t + self.discount * torch.max(
+                next_q_values, dim=1
+            ).values * (1 - terminals_t)
+            loss = self.loss_fn(q_values[:, actions_t], target)
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
         self.replace_target()
         self.decrement_eps()
+        self.step += 1
 
     def save(self):
         self.checkpoint_path.mkdir(parents=True, exist_ok=True)
