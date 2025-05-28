@@ -16,20 +16,20 @@ if __name__ == "__main__":
     agent = Agent(
         device=device,
         eps=1.0,
-        eps_min=0.01,
-        eps_decay=5e-7,
+        eps_min=0.1,
+        eps_decay=1e-5,
         n_actions=n_actions,
         states_dim=states_dim,
         discount=0.99,
         checkpoint_path=Path("checkpoints/"),
         replace=1000,
-        memory_size=100_000,
+        memory_size=50_000,
         batch_size=32,
     )
     writer = SummaryWriter("runs/pong")
     best_reward = float("-inf")
-    warmup = 1000
-    for i in tqdm(range(10_000)):
+    warmup = 10
+    for i in tqdm(range(500)):
         state, _ = env.reset()
         done = False
         rewards = []
@@ -46,5 +46,6 @@ if __name__ == "__main__":
             print(f"New best reward: {final_reward}")
             best_reward = final_reward
             agent.save()
+        print(f"Episode {i}, final reward: {final_reward}, epsilon: {agent.eps}")
         writer.add_scalar("reward", final_reward, i)
         writer.add_scalar("epsilon", agent.eps, i)
