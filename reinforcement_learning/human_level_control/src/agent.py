@@ -20,6 +20,7 @@ class Agent:
         replace: int,
         memory_size: int,
         batch_size: int,
+        learning_rate: float
     ) -> None:
         self.q_main = Network(states_dim, n_actions).to(device)
         self.q_target = Network(states_dim, n_actions).to(device)
@@ -30,7 +31,8 @@ class Agent:
         self.memory = Memory(states_dim, max_size=memory_size)
         self.replace = replace
         self.loss_fn = nn.HuberLoss().to(device)
-        self.optimizer = torch.optim.Adam(self.q_main.parameters(), lr=0.001)
+        self.optimizer = torch.optim.RMSprop(
+            self.q_main.parameters(), lr=learning_rate)
         self.eps = eps
         self.eps_min = eps_min
         self.eps_decay = eps_decay
@@ -81,6 +83,7 @@ class Agent:
 
     def learn(self):
         if self.step >= self.batch_size:
+            self.optimizer.zero_grad()
             states, actions, rewards, states_, terminals = self.memory.sample(
                 self.batch_size
             )
@@ -91,18 +94,17 @@ class Agent:
                 torch.from_numpy(states_).float().to(self.device),
                 torch.from_numpy(terminals).bool().to(self.device),
             )
+            indices = torch.arange(self.batch_size, device=self.device)
+            self.q_main.train()
+            q_values = self.q_main(states_t)[indices, actions_t]
             self.q_target.eval()
             with torch.inference_mode():
-                next_q_values = self.q_target(states__t)
-            self.q_main.train()
-            q_values = self.q_main(states_t)
-            target = rewards_t + self.discount * torch.max(
-                next_q_values, dim=1
-            ).values * (~terminals_t)
+                next_q_values = self.q_target(states__t).max(dim=1)[0]
+                next_q_values[terminals_t] = 0.0
+            target = rewards_t + self.discount * next_q_values
             loss = self.loss_fn(
-                q_values[torch.arange(self.batch_size), actions_t], target
+                q_values, target
             )
-            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
         self.replace_target()

@@ -8,7 +8,7 @@ from reinforcement_learning.human_level_control.src.atari_preprocessing import (
 )
 
 if __name__ == "__main__":
-    device = "cuda"
+    device = "mps"
     env = create_env("PongNoFrameskip-v4")
     states_dim = env.observation_space.shape
     assert states_dim
@@ -25,6 +25,7 @@ if __name__ == "__main__":
         replace=1000,
         memory_size=50_000,
         batch_size=32,
+        learning_rate=0.0001
     )
     writer = SummaryWriter("runs/pong")
     best_reward = float("-inf")

@@ -65,6 +65,7 @@ class Trainer:
         losses: list[float] = []
         pbar = tqdm.tqdm(self.train_dl)
         for encoder_input, decoder_input, tgt in pbar:
+            self.optimizer.zero_grad()
             pred_logits = self.transformer_model(
                 encoder_input.to(self.device),
                 decoder_input.to(self.device),
@@ -74,7 +75,6 @@ class Trainer:
             loss: torch.Tensor = self.loss_fn(pred_logits, tgt)
             loss_number = loss.detach().cpu().item()
             losses.append(loss_number)
-            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
             lr = self._update_lr()

@@ -14,9 +14,10 @@ class Network(torch.nn.Module):
             torch.nn.Flatten(),
             torch.nn.Linear(3136, 512),
             torch.nn.ReLU(),
+            torch.nn.Linear(512, 512),
+            torch.nn.ReLU(),
             torch.nn.Linear(512, n_actions),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.sequential(x)
-        return x.view(x.size(0), -1)
+        return self.sequential(x)
