@@ -53,5 +53,6 @@ def train(
             print(f"New best reward: {final_reward}")
             best_reward = final_reward
             agent.save()
+        print(f"Episode {i}, reward: {final_reward}, eps: {agent.eps}")
         writer.add_scalar("reward", final_reward, i)
         writer.add_scalar("epsilon", agent.eps, i)
