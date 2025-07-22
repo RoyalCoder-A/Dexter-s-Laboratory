@@ -4,6 +4,21 @@ import pandas as pd
 import torch
 
 
+def get_dataloader(
+    train_ds_path: str, test_ds_path: str, window_period: int, batch_size: int
+) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    train_df = pd.read_csv(train_ds_path)
+    test_df = pd.read_csv(test_ds_path)
+    train_ds = StockDataset(train_df, window_period)
+    test_ds = StockDataset(test_df, window_period, train_ds.normalize_params)
+    return (
+        torch.utils.data.DataLoader(
+            train_ds, batch_size=batch_size, shuffle=True, pin_memory=True
+        ),
+        torch.utils.data.DataLoader(test_ds, batch_size=batch_size),
+    )
+
+
 class StockDataset(torch.utils.data.Dataset):
     def __init__(
         self,
