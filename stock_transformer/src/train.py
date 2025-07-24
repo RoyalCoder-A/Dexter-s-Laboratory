@@ -39,7 +39,8 @@ def train(
     else:
         print(f"No checkpoint found at {checkpoint_path}")
     transformer_model = transformer_model.to(device)
-    transformer_model.compile()
+    if device == "cuda":
+        transformer_model.compile()
     trainer = Trainer(
         transformer_model,
         batch_size,
