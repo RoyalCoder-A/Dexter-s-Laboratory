@@ -31,18 +31,30 @@ class StockDataset(torch.utils.data.Dataset):
     ) -> None:
         super().__init__()
         df, self.normalize_params = self._normalize_data(ds, normalize_params)
-        self.ds = self._setup_df(df, window_period)
+        self.window_period = window_period
+        self.ds: list[torch.Tensor] = self._setup_df(df, window_period * 2)
 
     def __len__(self):
         return len(self.ds)
 
-    def __getitem__(self, idx):
-        return self.ds[idx]
+    def __getitem__(self, idx: int):
+        item = self.ds[idx]
+        src = item[: self.window_period]  # (window_period, 11)
+        tgt = item[self.window_period :]  # (window_period, 11)
+        dec_src = torch.concat(
+            ((torch.ones((1, 11)).float() * -1), tgt[:-1, :])
+        )  # (window_period, 11)
+        dec_tgt = tgt  # (window_period, 11)
+        return (
+            src,
+            dec_src,
+            dec_tgt,
+        )
 
     @staticmethod
     def _setup_df(df: pd.DataFrame, window_period: int):
         """
-        return shape: list[(windows_period, 11)]
+        return shape: list[(windows_period * 2, 11)]
         """
         if "open_date" in df.columns:
             df["open_date"] = pd.to_datetime(df["open_date"])
@@ -66,10 +78,10 @@ class StockDataset(torch.utils.data.Dataset):
             "ema_50",
         ]
         features = df[feature_cols].values
-        windows = []
+        windows: list[torch.Tensor] = []
         for i in range(len(features) - window_period + 1):
             window = features[i : i + window_period]
-            windows.append(torch.tensor(window, dtype=torch.float64))
+            windows.append(torch.tensor(window).float())
 
         return windows
 

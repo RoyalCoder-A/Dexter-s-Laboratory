@@ -7,7 +7,7 @@ if __name__ == "__main__":
     train.train(
         32,
         10,
-        "mps",
+        "cpu",
         11,
         parent_dir / "train.csv",
         parent_dir / "test.csv",

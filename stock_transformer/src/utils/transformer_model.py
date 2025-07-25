@@ -41,13 +41,32 @@ class TransformerModel(torch.nn.Module):
 
     def generate_mask(self, src: torch.Tensor, tgt: torch.Tensor):
         device = src.device
-        src_mask = (src != 0).unsqueeze(1).unsqueeze(2).to(device)
-        tgt_mask = (tgt != 0).unsqueeze(1).unsqueeze(3).to(device)
+
+        # For multi-feature data, check if ALL features are non-zero (or use any() based on your needs)
+        # This creates a sequence-level mask of shape (batch, seq_len)
+        src_seq_mask = (src != 0).all(
+            dim=-1
+        )  # (batch, seq_len) - all features must be valid
+        tgt_seq_mask = (tgt != 0).all(
+            dim=-1
+        )  # (batch, seq_len) - all features must be valid
+
+        # Alternative: use any() if you want to mask only when ALL features are zero
+        # src_seq_mask = (src != 0).any(dim=-1)  # (batch, seq_len)
+        # tgt_seq_mask = (tgt != 0).any(dim=-1)  # (batch, seq_len)
+
+        # Reshape for attention mechanism
+        src_mask = src_seq_mask.unsqueeze(1).unsqueeze(2)  # (batch, 1, 1, seq_len)
+        tgt_mask = tgt_seq_mask.unsqueeze(1).unsqueeze(2)  # (batch, 1, 1, seq_len)
+
         seq_length = tgt.size(1)
         nopeak_mask = (
             (1 - torch.triu(torch.ones(1, seq_length, seq_length), diagonal=1))
             .bool()
             .to(device)
-        )
-        tgt_mask = tgt_mask & nopeak_mask
+        )  # (1, seq_length, seq_length)
+
+        # Combine target mask with causal mask - now dimensions are compatible
+        tgt_mask = tgt_mask & nopeak_mask  # (batch, 1, seq_len, seq_len)
+
         return src_mask, tgt_mask
