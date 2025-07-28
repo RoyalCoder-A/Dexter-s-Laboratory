@@ -2,6 +2,7 @@ import datetime
 from pathlib import Path
 import time
 from typing import Literal
+import numpy as np
 import pandas as pd
 import torch
 from binance.client import Client
@@ -14,7 +15,7 @@ def get_dataloader(
     train_df = pd.read_csv(train_ds_path)
     test_df = pd.read_csv(test_ds_path)
     train_ds = StockDataset(train_df, window_period)
-    test_ds = StockDataset(test_df, window_period)
+    test_ds = StockDataset(test_df, window_period, train_ds.normalized_params)
     return (
         torch.utils.data.DataLoader(
             train_ds, batch_size=batch_size, shuffle=True, pin_memory=True
@@ -28,10 +29,11 @@ class StockDataset(torch.utils.data.Dataset):
         self,
         ds: pd.DataFrame,
         window_period: int,
+        normalized_params: "_NORMALIZE_PARAMS_TYPE | None" = None
     ) -> None:
         super().__init__()
         self.window_period = window_period
-        self.ds: list[torch.Tensor] = self._setup_df(ds, window_period * 2)
+        self.ds, self.normalized_params = self._setup_df(ds, window_period * 2, normalized_params)
 
     def __len__(self):
         return len(self.ds)
@@ -50,8 +52,7 @@ class StockDataset(torch.utils.data.Dataset):
             dec_tgt,
         )
 
-    @staticmethod
-    def _setup_df(df: pd.DataFrame, window_period: int):
+    def _setup_df(self, df: pd.DataFrame, window_period: int, normalized_params: "_NORMALIZE_PARAMS_TYPE | None" = None):
         """
         return shape: list[(windows_period * 2, 11)]
         """
@@ -76,17 +77,15 @@ class StockDataset(torch.utils.data.Dataset):
             "ema_34",
             "ema_50",
         ]
-        for feature in feature_cols:
-            df[f"{feature}_pct"] = df[feature].pct_change()
-        feature_cols = [f"{x}_pct" for x in feature_cols]
         df.dropna(inplace=True)
+        df, normalized_params = self._normalize_data(df, normalized_params)
         features = df[feature_cols].values
         windows: list[torch.Tensor] = []
         for i in range(len(features) - window_period + 1):
             window = features[i : i + window_period]
             windows.append(torch.tensor(window).float())
 
-        return windows
+        return windows, normalized_params
 
     @staticmethod
     def _normalize_data(
@@ -98,7 +97,7 @@ class StockDataset(torch.utils.data.Dataset):
             for col in df.columns:
                 if col == "open_date":
                     continue
-                normalize_params[col] = {"mean": df[col].mean(), "std": df[col].std()}
+                normalize_params[col] = {"mean": df[col].replace([np.inf, -np.inf], np.nan).mean(), "std": df[col].replace([np.inf, -np.inf], np.nan).std()}
         for col in df.columns:
             if col == "open_date":
                 continue
