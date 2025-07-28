@@ -3,7 +3,7 @@ from typing import Literal
 
 import torch
 import tqdm
-from torchmetrics.regression import R2Score
+from torchmetrics.regression import MeanAbsoluteError
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from stock_transformer.src.utils.transformer_model import TransformerModel
@@ -31,8 +31,8 @@ class Trainer:
         self.device = device
         self.train_dl = train_dl
         self.valid_dl = valid_dl
-        self.loss_fn = torch.nn.CrossEntropyLoss().to(device)
-        self.validation_metric = R2Score().to(device)
+        self.loss_fn = torch.nn.HuberLoss().to(device)
+        self.validation_metric = MeanAbsoluteError().to(device)
         self.optimizer = torch.optim.Adam(
             self.transformer_model.parameters(), betas=(0.9, 0.98), eps=1e-9
         )
@@ -69,7 +69,7 @@ class Trainer:
                 decoder_input.to(self.device),
             )
             pred_logits = pred_logits.reshape(-1, pred_logits.size(-1))
-            tgt = tgt.to(self.device).reshape(-1)
+            tgt = tgt.to(self.device).reshape(-1, tgt.size(-1))
             loss: torch.Tensor = self.loss_fn(pred_logits, tgt)
             loss_number = loss.detach().cpu().item()
             losses.append(loss_number)
@@ -91,9 +91,11 @@ class Trainer:
                     encoder_input.to(self.device),
                     decoder_input.to(self.device),
                 )
+                pred_logits =  pred_logits.reshape(-1, pred_logits.size(-1))
+                tgt = tgt.to(self.device).reshape(-1, tgt.size(-1))
                 loss: torch.Tensor = self.loss_fn(
-                    pred_logits.reshape(-1, pred_logits.size(-1)),
-                    tgt.to(self.device).reshape(-1),
+                    pred_logits,
+                    tgt,
                 )
                 loss_number = loss.detach().cpu().item()
                 losses.append(loss_number)
@@ -101,17 +103,6 @@ class Trainer:
                 pbar.set_description(f"loss: {loss_number:.4f} val: {validation:.4f}")
                 val_scores.append(validation)
             return sum(losses) / len(losses), sum(val_scores) / len(val_scores)
-
-    def _calculate_validation(
-        self, pred_logits: torch.Tensor, tgt_ids: torch.Tensor
-    ) -> float:
-        pred_ids = torch.argmax(pred_logits, dim=-1).detach().cpu().numpy()
-        pred_strs = self.tokenizer.decode_batch(pred_ids)
-        tgt_strs = self.tokenizer.decode_batch(tgt_ids.detach().cpu().numpy())
-        bleu_score = self.validation_metric(
-            [pred_str for pred_str in pred_strs], [[tgt_str] for tgt_str in tgt_strs]
-        )
-        return bleu_score
 
     def _update_lr(self) -> float:
         self.current_step += 1

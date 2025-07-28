@@ -5,6 +5,7 @@ from typing import Literal
 import pandas as pd
 import torch
 from binance.client import Client
+from tqdm import tqdm
 
 
 def get_dataloader(
@@ -13,7 +14,7 @@ def get_dataloader(
     train_df = pd.read_csv(train_ds_path)
     test_df = pd.read_csv(test_ds_path)
     train_ds = StockDataset(train_df, window_period)
-    test_ds = StockDataset(test_df, window_period, train_ds.normalize_params)
+    test_ds = StockDataset(test_df, window_period)
     return (
         torch.utils.data.DataLoader(
             train_ds, batch_size=batch_size, shuffle=True, pin_memory=True
@@ -27,12 +28,10 @@ class StockDataset(torch.utils.data.Dataset):
         self,
         ds: pd.DataFrame,
         window_period: int,
-        normalize_params: "_NORMALIZE_PARAMS_TYPE | None" = None,
     ) -> None:
         super().__init__()
-        df, self.normalize_params = self._normalize_data(ds, normalize_params)
         self.window_period = window_period
-        self.ds: list[torch.Tensor] = self._setup_df(df, window_period * 2)
+        self.ds: list[torch.Tensor] = self._setup_df(ds, window_period * 2)
 
     def __len__(self):
         return len(self.ds)
@@ -77,6 +76,10 @@ class StockDataset(torch.utils.data.Dataset):
             "ema_34",
             "ema_50",
         ]
+        for feature in feature_cols:
+            df[f"{feature}_pct"] = df[feature].pct_change()
+        feature_cols = [f"{x}_pct" for x in feature_cols]
+        df.dropna(inplace=True)
         features = df[feature_cols].values
         windows: list[torch.Tensor] = []
         for i in range(len(features) - window_period + 1):
@@ -108,7 +111,7 @@ class StockDataset(torch.utils.data.Dataset):
 _NORMALIZE_PARAMS_TYPE = dict[str, dict[Literal["mean", "std"], float]]
 
 
-def fetch_eth_10m_ohlcv_binance(start_dt, end_dt, api_key=None, api_secret=None):
+def fetch_15m_ohlcv_binance(start_dt, end_dt, api_key=None, api_secret=None):
     """
     Fetches ETH/USDT 10-minute OHLCV data from Binance between start_dt and end_dt.
     Returns a DataFrame with columns: open_date, o, h, l, c, v.
@@ -162,21 +165,21 @@ def fetch_eth_10m_ohlcv_binance(start_dt, end_dt, api_key=None, api_secret=None)
 
 
 if __name__ == "__main__":
-    end_dt = datetime.datetime.now(datetime.timezone.utc)
-    start_dt = end_dt - datetime.timedelta(days=365)
+    end_dt = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=90)
+    start_dt = end_dt - datetime.timedelta(days=365 * 3)
 
     print(
-        f"Fetching ETH/USDT 10m data from {start_dt.isoformat()} to {end_dt.isoformat()}..."
+        f"Fetching 15m data from {start_dt.isoformat()} to {end_dt.isoformat()}..."
     )
-    df = fetch_eth_10m_ohlcv_binance(start_dt, end_dt)
+    df = fetch_15m_ohlcv_binance(start_dt, end_dt)
     parent_dir = Path(__file__).parent.parent.parent / "data"
     parent_dir.mkdir(parents=True, exist_ok=True)
     df.to_csv(parent_dir / "train.csv")
 
     end_dt = start_dt
-    start_dt = end_dt - datetime.timedelta(days=30)
+    start_dt = end_dt - datetime.timedelta(days=90)
     print(
         f"Fetching ETH/USDT 10m data from {start_dt.isoformat()} to {end_dt.isoformat()}..."
     )
-    df = fetch_eth_10m_ohlcv_binance(start_dt, end_dt)
+    df = fetch_15m_ohlcv_binance(start_dt, end_dt)
     df.to_csv(parent_dir / "test.csv")
