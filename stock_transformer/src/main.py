@@ -5,13 +5,11 @@ from stock_transformer.src import train
 if __name__ == "__main__":
     parent_dir = Path(__file__).parent.parent / "data"
     train.train(
-        32,
-        20,
-        "mps",
-        11,
-        str(parent_dir / "train.csv"),
-        str(parent_dir / "test.csv"),
-        10,
-        parent_dir,
-        "train_4",
+        batch_size=2,
+        epochs=20,
+        device="cpu",
+        train_ds_path=parent_dir / "train.csv",
+        test_ds_path=parent_dir / "test.csv",
+        data_path=parent_dir,
+        train_name="train_4",
     )

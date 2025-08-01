@@ -11,27 +11,42 @@ from tqdm import tqdm
 from stock_transformer.src.utils.candles import fetch_15m_ohlcv_binance
 
 WINDOW_PERIOD = 10
+FEATURES_COUNT = 11
 
 
 def get_dataloader(
-    train_ds_path: str, test_ds_path: str, batch_size: int
+    train_ds_path: Path, test_ds_path: Path, batch_size: int
 ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
-    pass
+    train_dl = torch.utils.data.DataLoader(
+        StockDataset(train_ds_path),
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=True,
+    )
+    test_dl = torch.utils.data.DataLoader(
+        StockDataset(test_ds_path),
+        batch_size=batch_size,
+    )
+    return train_dl, test_dl
 
 
 class StockDataset(torch.utils.data.Dataset):
-    def __init__(
-        self,
-        ds: pd.DataFrame,
-        normalized_params: "_NORMALIZE_PARAMS_TYPE | None" = None,
-    ) -> None:
+    def __init__(self, ds_path: Path) -> None:
         super().__init__()
+        self.ds_path = ds_path
+        self.ds = load_ds(ds_path)
 
     def __len__(self):
-        pass
+        return len(self.ds.ds)
 
     def __getitem__(self, idx: int):
-        pass
+        item = self.ds.ds[idx]
+        encoder_input = item[0]  # (windows_size, feature_size)
+        decoder_input = torch.concat(
+            [torch.ones((1, 1)) * -1, item[1][:-1]]
+        )  # (window_size, 1)
+        tgt = item[1]  # (window_size, 1)
+        return encoder_input, decoder_input, tgt
 
 
 _NORMALIZE_PARAMS_TYPE = dict[str, dict[Literal["mean", "std"], float]]
@@ -62,10 +77,7 @@ def _normalize_data(
 def _prepare_dataset(
     df: pd.DataFrame, normalized_params: _NORMALIZE_PARAMS_TYPE | None = None
 ):
-    if not normalized_params:
-        df, normalized_params = _normalize_data(df)
-    else:
-        df, normalized_params = _normalize_data(df, normalized_params)
+    df, normalized_params = _normalize_data(df, normalized_params)
     feature_cols = [
         "o",
         "h",

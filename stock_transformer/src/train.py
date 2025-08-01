@@ -2,26 +2,23 @@ from pathlib import Path
 from typing import Literal
 import torch
 from torch.utils.tensorboard.writer import SummaryWriter
-from stock_transformer.src.utils.dataset import get_dataloader
+from stock_transformer.src.utils.dataset import FEATURES_COUNT, get_dataloader
 from stock_transformer.src.utils.trainer import Trainer
 from stock_transformer.src.utils.transformer_model import TransformerModel
 
 
 def train(
+    *,
     batch_size: int,
     epochs: int,
     device: Literal["cpu", "cuda", "mps"],
-    features_size: int,
-    train_ds_path: str,
-    test_ds_path: str,
-    window_period: int,
+    train_ds_path: Path,
+    test_ds_path: Path,
     data_path: Path,
     train_name: str = "",
 ):
-    transformer_model = TransformerModel(features_size, 512, 6, 2048, 8, 0.1)
-    train_dl, test_dl = get_dataloader(
-        train_ds_path, test_ds_path, window_period, batch_size
-    )
+    transformer_model = TransformerModel(FEATURES_COUNT, 512, 6, 2048, 8, 0.1)
+    train_dl, test_dl = get_dataloader(train_ds_path, test_ds_path, batch_size)
     summary_writer_path = data_path / "runs"
     checkpoint_path = data_path / "checkpoints"
     if train_name:
