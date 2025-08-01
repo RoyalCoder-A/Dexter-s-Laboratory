@@ -11,5 +11,5 @@ if __name__ == "__main__":
         train_ds_path=parent_dir / "train.pkl",
         test_ds_path=parent_dir / "test.pkl",
         data_path=parent_dir,
-        train_name="train_4",
+        train_name="test_1",
     )

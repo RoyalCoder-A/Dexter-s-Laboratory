@@ -155,7 +155,7 @@ if __name__ == "__main__":
         train_result = pd.concat([train_result, train_df])
         test_result = pd.concat([test_result, test_df])
 
-    train_ds, normalized_params = _prepare_dataset(train_df)
+    train_ds, normalized_params = _prepare_dataset(train_result)
     test_ds, _ = _prepare_dataset(test_result, normalized_params)
 
     train_obj = _Dataset(train_ds, normalized_params)
