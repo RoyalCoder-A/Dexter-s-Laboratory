@@ -3,6 +3,7 @@ from binance.client import Client
 import pandas as pd
 import time
 
+
 def fetch_15m_ohlcv_binance(
     symbol: str,
     start_dt: datetime.datetime,

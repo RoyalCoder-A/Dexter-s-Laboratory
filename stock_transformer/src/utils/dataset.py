@@ -34,31 +34,34 @@ class StockDataset(torch.utils.data.Dataset):
         pass
 
 
-
 _NORMALIZE_PARAMS_TYPE = dict[str, dict[Literal["mean", "std"], float]]
 
-def _normalize_data(
-        df: pd.DataFrame,
-        normalize_params: "_NORMALIZE_PARAMS_TYPE | None" = None,
-    ):
-        if not normalize_params:
-            normalize_params = {}
-            for col in df.columns:
-                if col in ("open_date", "symbol"):
-                    continue
-                normalize_params[col] = {
-                    "mean": df[col].replace([np.inf, -np.inf], np.nan).mean(),
-                    "std": df[col].replace([np.inf, -np.inf], np.nan).std(),
-                }
-        for col in df.columns:
-            if col == "open_date":
-                continue
-            df[col] = (df[col] - normalize_params[col]["mean"]) / normalize_params[col][
-                "std"
-            ]
-        return df, normalize_params
 
-def _prepare_dataset(df: pd.DataFrame, normalized_params: _NORMALIZE_PARAMS_TYPE | None = None):
+def _normalize_data(
+    df: pd.DataFrame,
+    normalize_params: "_NORMALIZE_PARAMS_TYPE | None" = None,
+):
+    if not normalize_params:
+        normalize_params = {}
+        for col in df.columns:
+            if col in ("open_date", "symbol"):
+                continue
+            normalize_params[col] = {
+                "mean": df[col].replace([np.inf, -np.inf], np.nan).mean(),
+                "std": df[col].replace([np.inf, -np.inf], np.nan).std(),
+            }
+    for col in df.columns:
+        if col == "open_date":
+            continue
+        df[col] = (df[col] - normalize_params[col]["mean"]) / normalize_params[col][
+            "std"
+        ]
+    return df, normalize_params
+
+
+def _prepare_dataset(
+    df: pd.DataFrame, normalized_params: _NORMALIZE_PARAMS_TYPE | None = None
+):
     if not normalized_params:
         df, normalized_params = _normalize_data(df)
     else:
@@ -76,9 +79,7 @@ def _prepare_dataset(df: pd.DataFrame, normalized_params: _NORMALIZE_PARAMS_TYPE
         "ema_34",
         "ema_50",
     ]
-    target_cols = [
-        "target"
-    ]
+    target_cols = ["target"]
     result: list[tuple[torch.Tensor, torch.Tensor]] = []
     pbar = tqdm(df.groupby("symbol"))
     for symbol, group in pbar:
@@ -88,7 +89,12 @@ def _prepare_dataset(df: pd.DataFrame, normalized_params: _NORMALIZE_PARAMS_TYPE
         for i in range(len(features) - WINDOW_PERIOD + 1):
             feature_window = features[i : i + WINDOW_PERIOD]
             target_window = targets[i : i + WINDOW_PERIOD]
-            result.append((torch.tensor(feature_window).float(), torch.tensor(target_window).float()))
+            result.append(
+                (
+                    torch.tensor(feature_window).float(),
+                    torch.tensor(target_window).float(),
+                )
+            )
     return result, normalized_params
 
 
@@ -103,6 +109,7 @@ def load_ds(path: Path) -> _Dataset:
         obj = pickle.load(file)
     return cast(_Dataset, obj)
 
+
 if __name__ == "__main__":
     crypto_symbols = [
         "BTCUSDT",  # Bitcoin
@@ -116,10 +123,16 @@ if __name__ == "__main__":
         "AVAXUSDT",  # Avalanche
         "MATICUSDT",  # Polygon
     ]
-    train_start_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=3 * 365)
-    train_end_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=90)
+    train_start_date = datetime.datetime.now(
+        datetime.timezone.utc
+    ) - datetime.timedelta(days=3 * 365)
+    train_end_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        days=90
+    )
 
-    test_start_date  = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=90)
+    test_start_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        days=90
+    )
     test_end_date = datetime.datetime.now(datetime.timezone.utc)
 
     train_result = pd.DataFrame()
@@ -130,7 +143,7 @@ if __name__ == "__main__":
         train_result = pd.concat([train_result, train_df])
         test_result = pd.concat([test_result, test_df])
 
-    train_ds, normalized_params = _prepare_dataset(train_df)    
+    train_ds, normalized_params = _prepare_dataset(train_df)
     test_ds, _ = _prepare_dataset(test_result, normalized_params)
 
     train_obj = _Dataset(train_ds, normalized_params)
