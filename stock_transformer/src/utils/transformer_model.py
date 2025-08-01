@@ -21,7 +21,7 @@ class TransformerModel(torch.nn.Module):
         self.decoder_pre_layer = PreLayer(1, d_model)
         self.encoder = Encoder(n, d_model, dff, n_heads, p_dropout)
         self.decoder = Decoder(n, d_model, dff, n_heads, p_dropout)
-        self.head = torch.nn.Linear(d_model, feature_size)
+        self.head = torch.nn.Linear(d_model, 1)
         self._reset_parameters()
 
     def _reset_parameters(self) -> None:
@@ -36,7 +36,7 @@ class TransformerModel(torch.nn.Module):
         src_mask, tgt_mask = self.generate_mask(encoder_input, decoder_input)
         encoder_input = self.encoder_pre_layer(encoder_input)
         encoder_output = self.encoder(encoder_input, src_mask)
-        decoder_input = self.encoder_pre_layer(decoder_input)
+        decoder_input = self.decoder_pre_layer(decoder_input)
         decoder_output = self.decoder(decoder_input, encoder_output, src_mask, tgt_mask)
         return self.head(decoder_output)
 
