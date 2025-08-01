@@ -29,11 +29,13 @@ class StockDataset(torch.utils.data.Dataset):
         self,
         ds: pd.DataFrame,
         window_period: int,
-        normalized_params: "_NORMALIZE_PARAMS_TYPE | None" = None
+        normalized_params: "_NORMALIZE_PARAMS_TYPE | None" = None,
     ) -> None:
         super().__init__()
         self.window_period = window_period
-        self.ds, self.normalized_params = self._setup_df(ds, window_period * 2, normalized_params)
+        self.ds, self.normalized_params = self._setup_df(
+            ds, window_period * 2, normalized_params
+        )
 
     def __len__(self):
         return len(self.ds)
@@ -52,7 +54,12 @@ class StockDataset(torch.utils.data.Dataset):
             dec_tgt,
         )
 
-    def _setup_df(self, df: pd.DataFrame, window_period: int, normalized_params: "_NORMALIZE_PARAMS_TYPE | None" = None):
+    def _setup_df(
+        self,
+        df: pd.DataFrame,
+        window_period: int,
+        normalized_params: "_NORMALIZE_PARAMS_TYPE | None" = None,
+    ):
         """
         return shape: list[(windows_period * 2, 11)]
         """
@@ -97,7 +104,10 @@ class StockDataset(torch.utils.data.Dataset):
             for col in df.columns:
                 if col == "open_date":
                     continue
-                normalize_params[col] = {"mean": df[col].replace([np.inf, -np.inf], np.nan).mean(), "std": df[col].replace([np.inf, -np.inf], np.nan).std()}
+                normalize_params[col] = {
+                    "mean": df[col].replace([np.inf, -np.inf], np.nan).mean(),
+                    "std": df[col].replace([np.inf, -np.inf], np.nan).std(),
+                }
         for col in df.columns:
             if col == "open_date":
                 continue
@@ -110,11 +120,13 @@ class StockDataset(torch.utils.data.Dataset):
 _NORMALIZE_PARAMS_TYPE = dict[str, dict[Literal["mean", "std"], float]]
 
 
-def fetch_15m_ohlcv_binance(start_dt, end_dt, api_key=None, api_secret=None):
-    """
-    Fetches ETH/USDT 10-minute OHLCV data from Binance between start_dt and end_dt.
-    Returns a DataFrame with columns: open_date, o, h, l, c, v.
-    """
+def fetch_15m_ohlcv_binance(
+    symbol: str,
+    start_dt: datetime.datetime,
+    end_dt: datetime.datetime,
+    api_key=None,
+    api_secret=None,
+):
     client = Client(api_key, api_secret)
     limit = 1000  # max candles per request
 
@@ -124,7 +136,7 @@ def fetch_15m_ohlcv_binance(start_dt, end_dt, api_key=None, api_secret=None):
 
     while start_ts < end_ts:
         klines = client.get_klines(
-            symbol="ETHUSDT",
+            symbol=symbol,
             interval=Client.KLINE_INTERVAL_15MINUTE,
             startTime=start_ts,
             endTime=end_ts,
@@ -159,26 +171,45 @@ def fetch_15m_ohlcv_binance(start_dt, end_dt, api_key=None, api_secret=None):
     df = df[["open_date", "o", "h", "l", "c", "v"]].astype(
         {"o": float, "h": float, "l": float, "c": float, "v": float}
     )
-    df.set_index("open_date", inplace=True)
+    ema_periods = [5, 8, 9, 12, 34, 50]
+    for period in ema_periods:
+        df[f"ema_{period}"] = df["c"].ewm(span=period, adjust=False).mean()
+    df.dropna(inplace=True)
+    df.sort_values(by="open_date", ascending=True, inplace=True)
+    df["c_change"] = df["c"].pct_change()
+    df.dropna(inplace=True)
+    df["symbol"] = symbol
+    df.set_index(["open_date", "symbol"], drop=True, inplace=True)
     return df
 
 
 if __name__ == "__main__":
-    end_dt = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=90)
-    start_dt = end_dt - datetime.timedelta(days=365 * 3)
+    crypto_symbols = [
+        "BTCUSDT",  # Bitcoin
+        "ETHUSDT",  # Ethereum
+        "BNBUSDT",  # Binance Coin
+        "SOLUSDT",  # Solana
+        "ADAUSDT",  # Cardano
+        "XRPUSDT",  # Ripple
+        "DOGEUSDT",  # Dogecoin
+        "LINKUSDT",  # Chainlink
+        "AVAXUSDT",  # Avalanche
+        "MATICUSDT",  # Polygon
+    ]
+    train_start_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=3 * 365)
+    train_end_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=90)
 
-    print(
-        f"Fetching 15m data from {start_dt.isoformat()} to {end_dt.isoformat()}..."
-    )
-    df = fetch_15m_ohlcv_binance(start_dt, end_dt)
-    parent_dir = Path(__file__).parent.parent.parent / "data"
-    parent_dir.mkdir(parents=True, exist_ok=True)
-    df.to_csv(parent_dir / "train.csv")
+    test_start_date  = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=90)
+    test_end_date = datetime.datetime.now(datetime.timezone.utc)
 
-    end_dt = start_dt
-    start_dt = end_dt - datetime.timedelta(days=90)
-    print(
-        f"Fetching ETH/USDT 10m data from {start_dt.isoformat()} to {end_dt.isoformat()}..."
-    )
-    df = fetch_15m_ohlcv_binance(start_dt, end_dt)
-    df.to_csv(parent_dir / "test.csv")
+    train_result = pd.DataFrame()
+    test_result = pd.DataFrame()
+    for symbol in tqdm(crypto_symbols):
+        train_df = fetch_15m_ohlcv_binance(symbol, train_start_date, train_end_date)
+        test_df = fetch_15m_ohlcv_binance(symbol, test_start_date, test_end_date)
+        train_result = pd.concat([train_result, train_df])
+        test_result = pd.concat([test_result, test_df])
+    data_dir = Path(__file__).parent.parent.parent / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    train_result.to_csv(data_dir / "train.csv")
+    test_result.to_csv(data_dir / "test.csv")

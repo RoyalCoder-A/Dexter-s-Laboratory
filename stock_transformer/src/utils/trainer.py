@@ -91,7 +91,7 @@ class Trainer:
                     encoder_input.to(self.device),
                     decoder_input.to(self.device),
                 )
-                pred_logits =  pred_logits.reshape(-1, pred_logits.size(-1))
+                pred_logits = pred_logits.reshape(-1, pred_logits.size(-1))
                 tgt = tgt.to(self.device).reshape(-1, tgt.size(-1))
                 loss: torch.Tensor = self.loss_fn(
                     pred_logits,
