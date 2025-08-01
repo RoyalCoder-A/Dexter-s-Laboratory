@@ -117,7 +117,7 @@ class _Dataset:
 
 
 def load_ds(path: Path) -> _Dataset:
-    with open(path, "ab") as file:
+    with open(path, "rb") as file:
         obj = pickle.load(file)
     return cast(_Dataset, obj)
 
