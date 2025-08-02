@@ -8,9 +8,9 @@ if __name__ == "__main__":
     train.train(
         batch_size=512,
         epochs=20,
-        device="cuda",
+        device="mps",
         train_ds_path=parent_dir / "train.pkl",
         test_ds_path=parent_dir / "test.pkl",
         data_path=parent_dir,
-        train_name="train_2",
+        train_name="train_3",
     )
