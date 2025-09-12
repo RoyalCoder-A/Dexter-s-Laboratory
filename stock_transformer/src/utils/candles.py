@@ -60,7 +60,9 @@ def fetch_15m_ohlcv_binance(
         df[f"ema_{period}"] = df["c"].ewm(span=period, adjust=False).mean()
     df.dropna(inplace=True)
     df.sort_values(by="open_date", ascending=True, inplace=True)
-    df["target"] = df["c"].pct_change().shift(-1)
+    df["c_target"] = df["c"].pct_change().shift(-1)
+    df["l_target"] = df["l"].pct_change().shift(-1)
+    df["h_target"] = df["h"].pct_change().shift(-1)
     df.dropna(inplace=True)
     df["symbol"] = symbol
     df.set_index(["open_date", "symbol"], drop=True, inplace=True)

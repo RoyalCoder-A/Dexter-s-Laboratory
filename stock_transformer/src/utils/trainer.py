@@ -6,6 +6,7 @@ import tqdm
 from torchmetrics.regression import MeanAbsoluteError
 from torch.utils.tensorboard.writer import SummaryWriter
 
+from stock_transformer.src.utils.dataset import TARGETS_COUNT
 from stock_transformer.src.utils.transformer_model import TransformerModel
 
 
@@ -68,8 +69,8 @@ class Trainer:
                 encoder_input.to(self.device),
                 decoder_input.to(self.device),
             )
-            pred_logits = pred_logits.reshape(-1, pred_logits.size(-1))
-            tgt = tgt.to(self.device).reshape(-1, tgt.size(-1))
+            pred_logits = pred_logits.reshape(self.batch_size, TARGETS_COUNT)
+            tgt = tgt.to(self.device).reshape(self.batch_size, TARGETS_COUNT)
             loss: torch.Tensor = self.loss_fn(pred_logits, tgt)
             loss_number = loss.detach().cpu().item()
             losses.append(loss_number)
@@ -91,8 +92,8 @@ class Trainer:
                     encoder_input.to(self.device),
                     decoder_input.to(self.device),
                 )
-                pred_logits = pred_logits.reshape(-1, pred_logits.size(-1))
-                tgt = tgt.to(self.device).reshape(-1, tgt.size(-1))
+                pred_logits = pred_logits.reshape(self.batch_size, TARGETS_COUNT)
+                tgt = tgt.to(self.device).reshape(self.batch_size, TARGETS_COUNT)
                 loss: torch.Tensor = self.loss_fn(
                     pred_logits,
                     tgt,

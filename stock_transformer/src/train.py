@@ -17,7 +17,7 @@ def train(
     data_path: Path,
     train_name: str = "",
 ):
-    transformer_model = TransformerModel(FEATURES_COUNT, 512, 6, 2048, 8, 0.1)
+    transformer_model = TransformerModel(512, 6, 2048, 8, 0.1)
     train_dl, test_dl = get_dataloader(train_ds_path, test_ds_path, batch_size)
     summary_writer_path = data_path / "runs"
     checkpoint_path = data_path / "checkpoints"

@@ -10,8 +10,9 @@ from tqdm import tqdm
 
 from stock_transformer.src.utils.candles import fetch_15m_ohlcv_binance
 
-WINDOW_PERIOD = 10
+WINDOW_PERIOD = 7 * 24 * 4
 FEATURES_COUNT = 11
+TARGETS_COUNT = 3
 
 
 def get_dataloader(
@@ -43,9 +44,9 @@ class StockDataset(torch.utils.data.Dataset):
         item = self.ds.ds[idx]
         encoder_input = item[0]  # (windows_size, feature_size)
         decoder_input = torch.concat(
-            [torch.ones((1, 1)) * -1, item[1][:-1]]
-        )  # (window_size, 1)
-        tgt = item[1]  # (window_size, 1)
+            [torch.ones((1, TARGETS_COUNT)) * -1, item[1][:-1]]
+        )  # (window_size, target_size)
+        tgt = item[1]  # (window_size, target_size)
         return encoder_input, decoder_input, tgt
 
 
@@ -91,7 +92,7 @@ def _prepare_dataset(
         "ema_34",
         "ema_50",
     ]
-    target_cols = ["target"]
+    target_cols = ["c_target", "l_target", "h_target"]
     result: list[tuple[torch.Tensor, torch.Tensor]] = []
     pbar = tqdm(df.groupby("symbol"))
     for symbol, group in pbar:
@@ -163,8 +164,8 @@ if __name__ == "__main__":
 
     data_dir = Path(__file__).parent.parent.parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    with open(data_dir / "train.pkl", "ab") as f:
+    with open(data_dir / "train_3_target.pkl", "ab") as f:
         pickle.dump(train_obj, f)
 
-    with open(data_dir / "test.pkl", "ab") as f:
+    with open(data_dir / "test_3_target.pkl", "ab") as f:
         pickle.dump(test_obj, f)

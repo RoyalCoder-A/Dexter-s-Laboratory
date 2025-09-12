@@ -9,8 +9,8 @@ if __name__ == "__main__":
         batch_size=512,
         epochs=20,
         device="mps",
-        train_ds_path=parent_dir / "train.pkl",
-        test_ds_path=parent_dir / "test.pkl",
+        train_ds_path=parent_dir / "train_3_target.pkl",
+        test_ds_path=parent_dir / "test_3_target.pkl",
         data_path=parent_dir,
-        train_name="train_3",
+        train_name="train_4",
     )
