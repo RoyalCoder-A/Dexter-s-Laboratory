@@ -55,7 +55,7 @@ class Trainer:
             print(f"Test val: {test_val:.4f}")
             if test_loss < best_loss:
                 best_loss = test_loss
-                self._save_checkpoint()
+            self._save_checkpoint()
             print("=" * 80)
 
     def _train_step(self) -> float:
