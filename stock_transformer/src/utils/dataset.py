@@ -122,8 +122,7 @@ def load_ds(path: Path) -> _Dataset:
         obj = pickle.load(file)
     return cast(_Dataset, obj)
 
-
-if __name__ == "__main__":
+def generate_dataset(base_path: Path):
     crypto_symbols = [
         "BTCUSDT",  # Bitcoin
         "ETHUSDT",  # Ethereum
@@ -162,10 +161,14 @@ if __name__ == "__main__":
     train_obj = _Dataset(train_ds, normalized_params)
     test_obj = _Dataset(test_ds, normalized_params)
 
-    data_dir = Path(__file__).parent.parent.parent / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    with open(data_dir / "train_3_target.pkl", "ab") as f:
+    with open(base_path / "train_3_target.pkl", "ab") as f:
         pickle.dump(train_obj, f)
 
-    with open(data_dir / "test_3_target.pkl", "ab") as f:
+    with open(base_path / "test_3_target.pkl", "ab") as f:
         pickle.dump(test_obj, f)
+
+
+if __name__ == "__main__":
+    data_dir = Path(__file__).parent.parent.parent / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    generate_dataset(data_dir)
