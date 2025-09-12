@@ -122,38 +122,50 @@ def load_ds(path: Path) -> _Dataset:
         obj = pickle.load(file)
     return cast(_Dataset, obj)
 
-def generate_dataset(base_path: Path):
-    crypto_symbols = [
-        "BTCUSDT",  # Bitcoin
-        "ETHUSDT",  # Ethereum
-        "BNBUSDT",  # Binance Coin
-        "SOLUSDT",  # Solana
-        "ADAUSDT",  # Cardano
-        "XRPUSDT",  # Ripple
-        "DOGEUSDT",  # Dogecoin
-        "LINKUSDT",  # Chainlink
-        "AVAXUSDT",  # Avalanche
-        "MATICUSDT",  # Polygon
-    ]
-    train_start_date = datetime.datetime.now(
-        datetime.timezone.utc
-    ) - datetime.timedelta(days=3 * 365)
-    train_end_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-        days=90
-    )
+def generate_dataset(base_path: Path, only_dfs: bool = False,
+                     use_cached_data: bool = False):
+    if not use_cached_data:
+        crypto_symbols = [
+            "BTCUSDT",  # Bitcoin
+            "ETHUSDT",  # Ethereum
+            "BNBUSDT",  # Binance Coin
+            "SOLUSDT",  # Solana
+            "ADAUSDT",  # Cardano
+            "XRPUSDT",  # Ripple
+            "DOGEUSDT",  # Dogecoin
+            "LINKUSDT",  # Chainlink
+            "AVAXUSDT",  # Avalanche
+            "MATICUSDT",  # Polygon
+        ]
+        train_start_date = datetime.datetime.now(
+            datetime.timezone.utc
+        ) - datetime.timedelta(days=3 * 365)
+        train_end_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+            days=90
+        )
 
-    test_start_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-        days=90
-    )
-    test_end_date = datetime.datetime.now(datetime.timezone.utc)
+        test_start_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+            days=90
+        )
+        test_end_date = datetime.datetime.now(datetime.timezone.utc)
 
-    train_result = pd.DataFrame()
-    test_result = pd.DataFrame()
-    for symbol in tqdm(crypto_symbols):
-        train_df = fetch_15m_ohlcv_binance(symbol, train_start_date, train_end_date)
-        test_df = fetch_15m_ohlcv_binance(symbol, test_start_date, test_end_date)
-        train_result = pd.concat([train_result, train_df])
-        test_result = pd.concat([test_result, test_df])
+        train_result = pd.DataFrame()
+        test_result = pd.DataFrame()
+        for symbol in tqdm(crypto_symbols):
+            train_df = fetch_15m_ohlcv_binance(symbol, train_start_date, train_end_date)
+            test_df = fetch_15m_ohlcv_binance(symbol, test_start_date, test_end_date)
+            train_result = pd.concat([train_result, train_df])
+            test_result = pd.concat([test_result, test_df])
+    else:
+        train_result = pd.read_csv(base_path / "train.csv")
+        train_result.set_index(["open_date", "symbol"], drop=True, inplace=True)
+        test_result = pd.read_csv(base_path / "test.csv")
+        test_result.set_index(["open_date", "symbol"], drop=True, inplace=True)
+
+    if only_dfs:
+        train_result.to_csv(base_path / "train.csv")
+        test_result.to_csv(base_path / "test.csv")
+        return
 
     train_ds, normalized_params = _prepare_dataset(train_result)
     test_ds, _ = _prepare_dataset(test_result, normalized_params)
@@ -171,4 +183,4 @@ def generate_dataset(base_path: Path):
 if __name__ == "__main__":
     data_dir = Path(__file__).parent.parent.parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    generate_dataset(data_dir)
+    generate_dataset(data_dir, only_dfs=True)
