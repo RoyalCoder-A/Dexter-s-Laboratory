@@ -183,4 +183,4 @@ def generate_dataset(base_path: Path, only_dfs: bool = False,
 if __name__ == "__main__":
     data_dir = Path(__file__).parent.parent.parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    generate_dataset(data_dir, only_dfs=True)
+    generate_dataset(data_dir, use_cached_data=True)
