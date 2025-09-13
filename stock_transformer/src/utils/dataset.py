@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import datetime
+import json
 from pathlib import Path
 import pickle
 from typing import Literal, cast
@@ -63,8 +64,8 @@ def _normalize_data(
             if col in ("open_date", "symbol"):
                 continue
             normalize_params[col] = {
-                "mean": df[col].replace([np.inf, -np.inf], np.nan).mean(),
-                "std": df[col].replace([np.inf, -np.inf], np.nan).std(),
+                "mean": float(df[col].replace([np.inf, -np.inf], np.nan).mean()),
+                "std": float(df[col].replace([np.inf, -np.inf], np.nan).std()),
             }
     for col in df.columns:
         if col == "open_date":
@@ -122,8 +123,10 @@ def load_ds(path: Path) -> _Dataset:
         obj = pickle.load(file)
     return cast(_Dataset, obj)
 
-def generate_dataset(base_path: Path, only_dfs: bool = False,
-                     use_cached_data: bool = False):
+
+def generate_dataset(
+    base_path: Path, only_dfs: bool = False, use_cached_data: bool = False
+):
     if not use_cached_data:
         crypto_symbols = [
             "BTCUSDT",  # Bitcoin
@@ -140,13 +143,13 @@ def generate_dataset(base_path: Path, only_dfs: bool = False,
         train_start_date = datetime.datetime.now(
             datetime.timezone.utc
         ) - datetime.timedelta(days=3 * 365)
-        train_end_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-            days=90
-        )
+        train_end_date = datetime.datetime.now(
+            datetime.timezone.utc
+        ) - datetime.timedelta(days=90)
 
-        test_start_date = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
-            days=90
-        )
+        test_start_date = datetime.datetime.now(
+            datetime.timezone.utc
+        ) - datetime.timedelta(days=90)
         test_end_date = datetime.datetime.now(datetime.timezone.utc)
 
         train_result = pd.DataFrame()
@@ -168,6 +171,8 @@ def generate_dataset(base_path: Path, only_dfs: bool = False,
         return
 
     train_ds, normalized_params = _prepare_dataset(train_result)
+    with open(base_path / "normalized_args.json", "w") as f:
+        f.write(json.dumps(normalized_params))
     test_ds, _ = _prepare_dataset(test_result, normalized_params)
 
     train_obj = _Dataset(train_ds, normalized_params)
@@ -183,4 +188,4 @@ def generate_dataset(base_path: Path, only_dfs: bool = False,
 if __name__ == "__main__":
     data_dir = Path(__file__).parent.parent.parent / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    generate_dataset(data_dir, use_cached_data=True)
+    generate_dataset(data_dir, only_dfs=True)
