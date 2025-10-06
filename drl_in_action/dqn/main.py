@@ -2,7 +2,7 @@ import gymnasium
 import numpy as np
 import pandas as pd
 
-from drl_in_action.agent import Agent
+from drl_in_action.dqn.agent import Agent
 
 
 if __name__ == "__main__":

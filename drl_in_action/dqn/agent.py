@@ -1,7 +1,7 @@
 from collections import deque
 import numpy as np
 import torch
-from drl_in_action.model import QModel
+from drl_in_action.dqn.model import QModel
 
 
 class ReplyBuffer:
