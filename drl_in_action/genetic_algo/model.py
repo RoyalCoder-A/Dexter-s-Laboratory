@@ -31,7 +31,7 @@ def unpack_params(
     e = 0
     for i, l in enumerate(layers):
         s, e = e, e + np.prod(l)
-        weights = params[s:e]
+        weights = params[s:e].view(l)
         s, e = e, e + l[0]
         biases = params[s:e]
         result[f"l{i + 1}"] = (weights, biases)
