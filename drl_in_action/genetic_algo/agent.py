@@ -1,9 +1,11 @@
 import gymnasium
 import numpy as np
 import torch
+from tqdm import tqdm
 from drl_in_action.genetic_algo import model
 from drl_in_action.genetic_algo.model import LayersType, unpack_params
 from drl_in_action.genetic_algo.population import Population, mutate, recombine
+import multiprocessing as mp
 
 
 def next_generation(
@@ -43,11 +45,26 @@ def test_model(x: Population, layers: LayersType, env_id: str) -> float:
 
 def evaluate_population(
     pop: list[Population], layers: LayersType, env_id: str
-) -> tuple[list[Population], float]:
-    total_fit = 0
-    lp = len(pop)
-    for agent in pop:
-        score = test_model(agent, layers, env_id)
-        agent.fit = score
-        total_fit += score
-    return pop, total_fit / lp
+) -> tuple[list[Population], float, float]:
+
+    with mp.Pool(mp.cpu_count()) as pool:
+        result = list(
+            tqdm(
+                pool.imap_unordered(
+                    _test_model_wrapper,
+                    [(x, layers, env_id) for x in pop],
+                    chunksize=100,
+                ),
+                total=len(pop),
+            )
+        )
+    scores = np.array([x[1] for x in result])
+    return [x[0] for x in result], scores.mean(), scores.max()
+
+
+def _test_model_wrapper(
+    args: tuple[Population, LayersType, str],
+) -> tuple[Population, float]:
+    score = test_model(args[0], args[1], args[2])
+    args[0].fit = score
+    return args[0], score

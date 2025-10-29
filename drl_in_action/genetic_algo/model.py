@@ -19,7 +19,7 @@ def model(state: torch.Tensor, params: UnpackedParams) -> torch.Tensor:
     y = torch.nn.functional.linear(y, params["l2"][0], params["l2"][1])
     y = torch.nn.functional.relu(y)
     y = torch.nn.functional.linear(y, params["l3"][0], params["l3"][1])
-    y = torch.nn.functional.softmax(y)
+    y = torch.nn.functional.softmax(y, dim=-1)
     return y
 
 
