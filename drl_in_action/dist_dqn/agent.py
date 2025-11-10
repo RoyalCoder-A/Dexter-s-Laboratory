@@ -78,7 +78,7 @@ class Agent:
         states = torch.from_numpy(self.memory.states).float().to(self.device)
         rewards = torch.from_numpy(self.memory.rewards).float().to(self.device)
         states_ = torch.from_numpy(self.memory.states_).float().to(self.device)
-        terminals = torch.from_numpy(self.memory.terminals).long().to(self.device)
+        terminals = torch.from_numpy(self.memory.terminals).float().to(self.device)
         self.q_model.train()
         self.q_target.eval()
         self.opt.zero_grad()
