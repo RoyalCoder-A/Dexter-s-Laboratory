@@ -40,7 +40,7 @@ class DistDqnModel(torch.nn.Module):
         returns:
             tensor: [BATCH, NUM_ACTIONS, NUM_SUPPORT]
         """
-        return self.get_probs(state)
+        return self.get_logits(state)
 
     def get_logits(self, state: torch.Tensor) -> torch.Tensor:
         """
@@ -62,13 +62,19 @@ class DistDqnModel(torch.nn.Module):
         """
         return torch.nn.functional.softmax(self.get_logits(state), dim=-1)
 
-    def get_q_values(self, state: torch.Tensor) -> torch.Tensor:
+    def get_q_values(
+        self, state: torch.Tensor | None, probs: torch.Tensor | None = None
+    ) -> torch.Tensor:
         """
         args:
             state: [BATCH, STATE_SIZE]
+            probs: [BATCH, NUM_ACTIONS, NUM_SUPPORT]
         returns:
             tensor: [BATCH, NUM_ACTIONS]
         """
-        probs = self.get_probs(state)
+        if state is not None:
+            probs = self.get_probs(state)
+        elif probs is None:
+            raise ValueError("One of state or probs should be passed")
         values = torch.einsum("BAK,K->BA", probs, self.support)
         return values

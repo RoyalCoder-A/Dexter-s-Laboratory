@@ -76,7 +76,6 @@ class Agent:
         if self.memory.counter < self.memory_size:
             return
         states = torch.from_numpy(self.memory.states).float().to(self.device)
-        actions = torch.from_numpy(self.memory.actions).long().to(self.device)
         rewards = torch.from_numpy(self.memory.rewards).float().to(self.device)
         states_ = torch.from_numpy(self.memory.states_).float().to(self.device)
         terminals = torch.from_numpy(self.memory.terminals).long().to(self.device)
@@ -84,9 +83,16 @@ class Agent:
         self.q_target.eval()
         self.opt.zero_grad()
         with torch.no_grad():
-            next_probs = self.q_target(states_)
+            next_probs = self.q_target.get_probs(states_)
+            next_q_values = self.q_target.get_q_values(None, next_probs)
+            next_greedy_actions = next_q_values.argmax(dim=-1)
             target_probs = get_target_probs(
-                next_probs, actions, rewards, terminals, self.limits, self.discount
+                next_probs,
+                next_greedy_actions,
+                rewards,
+                terminals,
+                self.limits,
+                self.discount,
             )
         probs: torch.Tensor = self.q_model(states)
         loss: torch.Tensor = self.loss(probs, target_probs)
